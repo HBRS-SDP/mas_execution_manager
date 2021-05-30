@@ -4,6 +4,7 @@ from pyftsm.ftsm import FTSMTransitions
 from component_sm import ComponentSM
 from sensor_msgs.msg import PointCloud2
 from kafka import KafkaConsumer
+import json
 
 
 class StreamRGBDSM(ComponentSM):
@@ -11,7 +12,7 @@ class StreamRGBDSM(ComponentSM):
                  timeout=5.0, 
                  input_pointcloud_topic='/hsrb/head_rgbd_sensor/depth_registered/points', 
                  output_pointcloud_topic='/hsrb/head_rgbd_sensor/pointcloud',
-                 input_event_topic='/component_monitoring/event',
+                 input_event_topic='hsrb_monitoring_rgbd',
                  max_recovery_attempts=1):
         
         super(StreamRGBDSM, self).__init__('StreamRGBD', [], max_recovery_attempts)
@@ -19,14 +20,16 @@ class StreamRGBDSM(ComponentSM):
         self.timeout = timeout
         self.pointcloud = None
         
-        # listeners
+        # Kafka event listener
+        self.event_listener = KafkaConsumer(input_event_topic,
+        value_deserializer=lambda m: json.loads(m.decode('utf-8')))
+
+        # ROS poincloud listener
         self.pointcloud_listener = rospy.Subscriber(input_pointcloud_topic, 
                                                     PointCloud2,
                                                     self._callback)
-        #TODO
-        #self.event_listener = KafkaConsumer(input_event_topic)
 
-        # publishers
+        # ROS pointcloud publisher
         self.pointcloud_publisher = rospy.Publisher(output_pointcloud_topic, 
                                                     PointCloud2, 
                                                     queue_size=10)
@@ -34,33 +37,36 @@ class StreamRGBDSM(ComponentSM):
         self.last_active_time = rospy.Time.now()
 
     def _callback(self, data):
+        # Receiving pointcloud
         self.last_active_time = rospy.Time.now()
         self.execution_requested = True
         self.pointcloud = data
 
-    def running(self):
-        #TODO
-        #events = [message for message in self.event_listener]
-        #rospy.loginfo('Events from component monitoring:\n {}'\
-        #    .format(events))
+        # Publishing poincloud to component monitoring
+        #rospy.loginfo('Now I publish pointcloud to component monitoring')
+        self.pointcloud_publisher.publish(self.pointcloud)
 
-        if rospy.Time.now() - rospy.Duration(self.timeout) < \
+    def running(self):
+        # Receiving events from component monitoring
+        time_now = rospy.Time.now()
+        if time_now - rospy.Duration(self.timeout) < \
            self.last_active_time and self.pointcloud.data :
 
-            rospy.loginfo('Now I publish pointcloud to component monitoring')
-            self.pointcloud_publisher.publish(self.pointcloud)
-
-            return FTSMTransitions.CONTINUE
-        
+            for message in self.event_listener:
+                rospy.loginfo('Events from component monitoring:\n {}'\
+                .format(type(message.value)))
+                
         elif not self.pointcloud.data:
             rospy.logerr('The received poincloud from head RGBD Camera is empty.')
             return FTSMTransitions.RECOVER
 
-        else:
+        elif not time_now - rospy.Duration(self.timeout) < \
+           self.last_active_time:
             rospy.logerr('Can not receive the poincloud from head RGBD Camera.')
             return FTSMTransitions.RECONFIGURE
 
-        return FTSMTransitions.DONE
+        else: 
+            return FTSMTransitions.DONE
 
     def recovering(self):
         rospy.loginfo('Now I am recovering the RGBD CAMERA by moving the head')
