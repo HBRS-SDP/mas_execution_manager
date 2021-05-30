@@ -5,6 +5,8 @@ from component_sm import ComponentSM
 from sensor_msgs.msg import PointCloud2
 from kafka import KafkaConsumer
 import json
+import math
+import numpy as np
 
 
 class StreamRGBDSM(ComponentSM):
@@ -53,20 +55,17 @@ class StreamRGBDSM(ComponentSM):
            self.last_active_time and self.pointcloud.data :
 
             for message in self.event_listener:
-                rospy.loginfo('Events from component monitoring:\n {}'\
-                .format(type(message.value)))
-                
-        elif not self.pointcloud.data:
-            rospy.logerr('The received poincloud from head RGBD Camera is empty.')
-            return FTSMTransitions.RECOVER
+                rospy.loginfo('Component monitoring detected no NaN values in the poincloud.')
 
-        elif not time_now - rospy.Duration(self.timeout) < \
-           self.last_active_time:
+                if message.value['healthStatus']['nans']:
+                    rospy.logerr('Received poincloud from head RGBD Camera conatins NaN values.')
+                    return FTSMTransitions.RECOVER
+            
+            return FTSMTransitions.DONE
+
+        else:
             rospy.logerr('Can not receive the poincloud from head RGBD Camera.')
             return FTSMTransitions.RECONFIGURE
-
-        else: 
-            return FTSMTransitions.DONE
 
     def recovering(self):
         rospy.loginfo('Now I am recovering the RGBD CAMERA by moving the head')
