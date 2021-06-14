@@ -24,7 +24,8 @@ class StreamRGBDSM(ComponentSM):
         
         # Kafka event listener
         self.event_listener = KafkaConsumer(input_event_topic,
-        value_deserializer=lambda m: json.loads(m.decode('utf-8')))
+                                            value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+                                            consumer_timeout_ms=100)
 
         # ROS poincloud listener
         self.pointcloud_listener = rospy.Subscriber(input_pointcloud_topic, 
@@ -51,21 +52,25 @@ class StreamRGBDSM(ComponentSM):
     def running(self):
         # Receiving events from component monitoring
         time_now = rospy.Time.now()
-        if time_now - rospy.Duration(self.timeout) < \
+        while time_now - rospy.Duration(self.timeout) < \
            self.last_active_time and self.pointcloud.data :
 
+             
             for message in self.event_listener:
-                rospy.loginfo('Component monitoring detected no NaN values in the poincloud.')
-
                 if message.value['healthStatus']['nans']:
-                    rospy.logerr('Received poincloud from head RGBD Camera conatins NaN values.')
+                    rospy.logerr('Received poincloud conatins to many NaN values.')
                     return FTSMTransitions.RECOVER
+                else:
+                    rospy.loginfo('Received poincloud conatins acceptable number of NaN values.')
             
-            return FTSMTransitions.DONE
+            
+            rospy.logwarn('No feedback from the monitor.')
+            rospy.sleep(5)
+            
+            #return FTSMTransitions.DONE
 
-        else:
-            rospy.logerr('Can not receive the poincloud from head RGBD Camera.')
-            return FTSMTransitions.RECONFIGURE
+        rospy.logerr('Can not receive the poincloud from head RGBD Camera.')
+        return FTSMTransitions.RECONFIGURE
 
     def recovering(self):
         rospy.loginfo('Now I am recovering the RGBD CAMERA by moving the head')
