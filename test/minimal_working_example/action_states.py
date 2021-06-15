@@ -25,7 +25,7 @@ class StreamRGBDSM(ComponentSM):
         # Kafka event listener
         self.event_listener = KafkaConsumer(input_event_topic,
                                             value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-                                            consumer_timeout_ms=100)
+                                            consumer_timeout_ms=3000)
 
         # ROS poincloud listener
         self.pointcloud_listener = rospy.Subscriber(input_pointcloud_topic, 
@@ -54,18 +54,28 @@ class StreamRGBDSM(ComponentSM):
         time_now = rospy.Time.now()
         while time_now - rospy.Duration(self.timeout) < \
            self.last_active_time and self.pointcloud.data :
-
+            
+            time_now = rospy.Time.now()
              
+            last_message = None
             for message in self.event_listener:
+
+                last_message = message
+
+                time_now = rospy.Time.now()
+                if not time_now - rospy.Duration(self.timeout) < self.last_active_time:
+                    break
+
                 if message.value['healthStatus']['nans']:
                     rospy.logerr('Received poincloud conatins to many NaN values.')
                     return FTSMTransitions.RECOVER
                 else:
                     rospy.loginfo('Received poincloud conatins acceptable number of NaN values.')
             
+            if last_message is None:
+                rospy.logwarn('No feedback from the monitor.')
             
-            rospy.logwarn('No feedback from the monitor.')
-            rospy.sleep(5)
+            rospy.sleep(0.1)
             
             #return FTSMTransitions.DONE
 
