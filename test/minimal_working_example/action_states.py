@@ -9,6 +9,12 @@ import json
 import math
 import numpy as np
 
+###################################################################
+#TOD:
+#  - enable loading a list of input and output data topics
+#  - move yaml, json and schema files to more reasonable place
+#  - enable switching on and off the component monitoring
+###################################################################
 
 class StreamRGBDSM(ComponentSM):
     def __init__(self, 
@@ -71,7 +77,7 @@ class StreamRGBDSM(ComponentSM):
                 for message in self.event_listener:
                     
                     validate(instance=message.value, schema=self.monitoring_message_schema)
-                    
+                    print(message.value)
                     last_message = message
 
                     time_now = rospy.Time.now()
