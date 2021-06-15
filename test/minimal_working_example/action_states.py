@@ -188,6 +188,8 @@ class StreamRGBDSM(ComponentSM):
                     # Validate the correctness of the message
                     validate(instance=message.value, schema=self._monitoring_message_schema)
 
+                    self.turn_on_monitoring()
+                    
                     last_message = message
 
                     time_now = rospy.Time.now()
