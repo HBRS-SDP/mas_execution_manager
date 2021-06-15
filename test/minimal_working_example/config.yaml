@@ -1,0 +1,6 @@
+component_id: component_1
+data_input_topics: '/hsrb/head_rgbd_sensor/depth_registered/points'
+data_output_topics: '/hsrb/head_rgbd_sensor/pointcloud'
+monitoring_pipeline_topic: 'hsrb_monitoring_rgbd'
+monitoring_pipeline_server: 'localhost:9092'
+data_transfer_timeout: 5.0 # (seconds) if component can not publish data for this time, reconfiguration is activated
