@@ -31,10 +31,9 @@ class RGBDCameraSM(ComponentSMBase):
                                            monitors_ids=monitors_ids,
                                            general_message_format=general_message_format,
                                            general_message_schema=general_message_schema,
-                                           monitoring_message_schema=monitoring_message_schema,
+                                           monitoring_message_schemas=[monitoring_message_schema],
                                            monitoring_timeout=5)
         
-        self._timeout = data_transfer_timeout
         self._pointcloud = None
         self._timeout = data_transfer_timeout
 
@@ -73,7 +72,7 @@ class RGBDCameraSM(ComponentSMBase):
         try:
             for message in self._monitor_feedback_listener:
                 # Validate the correctness of the message
-                validate(instance=message.value, schema=self._monitoring_message_schema)
+                validate(instance=message.value, schema=self._monitoring_message_schemas[0])
 
                 self.turn_on_monitoring()
                 

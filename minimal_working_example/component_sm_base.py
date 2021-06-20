@@ -8,6 +8,51 @@ import rospy
 from abc import abstractmethod
 
 class ComponentSMBase(FTSM):
+    """
+    A class used to implement FTSM in the robot component
+
+    ...
+
+    Attributes
+    ----------
+    name : str
+        name of the comonent
+
+    component_id : str,
+        unique id of the component
+
+    dependencies : list
+        list of the components on which current component is dependant
+
+    monitoring_control_topic : str
+        name of the topic used to switch off and on the monitors
+
+    monitoring_pipeline_server : str
+        address and port of the server used to communicate with the component monitoring 
+        e.g. default address of the Kafka server is 'localhost:9092'
+
+    monitoring_feedback_topics : list[str]
+        name of the topics to receive feedback from the monitors
+
+    monitors_ids : list[str]
+        list of the unique ids of the monitors that are monitoring the current component
+
+    general_message_format : dict
+        format of the message used to switch on and of monitors
+
+    general_message_schema : dict
+        schema of the message used to switch on and off monitors
+
+    monitoring_message_schemas : list[dict]
+        schemas of the messages received from the monitors as feedback
+                
+    monitoring_timeout : int
+        time in seconds after which the feedback from the monitors is considered as not received
+
+    max_recovery_attempts : int
+        maximum number of attempts to recover
+    """
+
     def __init__(self, 
                 name, 
                 component_id,
@@ -18,17 +63,18 @@ class ComponentSMBase(FTSM):
                 monitors_ids,
                 general_message_format,
                 general_message_schema,
-                monitoring_message_schema,
+                monitoring_message_schemas,
                 monitoring_timeout=5,
                 max_recovery_attempts=1,
                 ):
+        
         super(ComponentSMBase, self).__init__(name, 
                                               dependencies, 
                                               max_recovery_attempts)
         self._to_be_monitored = False
         self._id = component_id
         self._monitors_ids = monitors_ids
-        self._monitoring_message_schema = monitoring_message_schema
+        self._monitoring_message_schemas = monitoring_message_schemas
         self._general_message_schema = general_message_schema
         self._general_message_format = general_message_format
         self._monitoring_control_topic = monitoring_control_topic  
