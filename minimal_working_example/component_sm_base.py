@@ -16,41 +16,41 @@ class ComponentSMBase(FTSM):
     Attributes
     ----------
     name : str
-        name of the comonent
+        Name of the comonent
 
     component_id : str,
-        unique id of the component
+        Unique id of the component
 
     dependencies : list
-        list of the components on which current component is dependant
+        List of the components on which current component is dependant
 
     monitoring_control_topic : str
-        name of the topic used to switch off and on the monitors
+        Name of the topic used to switch off and on the monitors
 
     monitoring_pipeline_server : str
-        address and port of the server used to communicate with the component monitoring 
+        Address and port of the server used to communicate with the component monitoring 
         e.g. default address of the Kafka server is 'localhost:9092'
 
     monitoring_feedback_topics : list[str]
-        name of the topics to receive feedback from the monitors
+        Name of the topics to receive feedback from the monitors
 
     monitors_ids : list[str]
-        list of the unique ids of the monitors that are monitoring the current component
+        List of the unique ids of the monitors that are monitoring the current component
 
     general_message_format : dict
-        format of the message used to switch on and of monitors
+        Format of the message used to switch on and of monitors
 
     general_message_schema : dict
-        schema of the message used to switch on and off monitors
+        Schema of the message used to switch on and off monitors
 
     monitoring_message_schemas : list[dict]
-        schemas of the messages received from the monitors as feedback
+        Schemas of the messages received from the monitors as feedback
                 
     monitoring_timeout : int
-        time in seconds after which the feedback from the monitors is considered as not received
+        Time in seconds after which the feedback from the monitors is considered as not received
 
     max_recovery_attempts : int
-        maximum number of attempts to recover
+        Maximum number of attempts to recover
     """
 
     def __init__(self, 
@@ -108,9 +108,23 @@ class ComponentSMBase(FTSM):
         
     @abstractmethod
     def handle_monitoring_feedback(self):
+        '''
+        Function for handling messages from the monitors responsible for monitoring the current component.
+        '''
         pass
 
     def __control_monitoring(self, cmd, response_timeout = 5):
+        '''
+        Function responsible for sending a command to the monitors responsible for monitoring the current component.
+
+            Parameters:
+                cmd (str): Command for monitor manager to manage monitors (shutdown or activate)
+                response_timeout (int): Timeout to wait for response from the monitor manager
+            
+            Returns:
+                bool: True - executiong of the command ended successfully
+                      False - executing of the command ended with failure 
+        '''
         message = self._general_message_format
         message['source_id'] = self._id
         message['target_id'] = self._monitors_ids
@@ -159,6 +173,13 @@ class ComponentSMBase(FTSM):
             return False
 
     def turn_off_monitoring(self):
+        '''
+        Function responsible for turning off the monitors responsible for monitoring the current component.
+            
+            Returns:
+                bool: True - turning off the monitors ended successfully
+                      False - turning off the monitors ended with failure 
+        '''
         if self._to_be_monitored:
             rospy.logwarn(
                 '[{}][{}] Turning off the monitoring.'.
@@ -187,6 +208,13 @@ class ComponentSMBase(FTSM):
         return True
 
     def turn_on_monitoring(self):
+        '''
+        Function responsible for turning on the monitors responsible for monitoring the current component.
+            
+            Returns:
+                bool: True - turning on the monitors ended successfully
+                      False - turning on the monitors ended with failure 
+        '''
         if not self._to_be_monitored:
             rospy.loginfo(
                 '[{}][{}] Turning on the monitoring.'.
