@@ -38,7 +38,7 @@ class RGBDCameraSM(ComponentSMBase):
         List of the unique ids of the monitors that are monitoring the current component
 
     general_message_format : dict
-        Format of the message used to switch on and of monitors
+        Format of the message used to switch on and off monitors
 
     general_message_schema : dict
         Schema of the message used to switch on and off monitors
