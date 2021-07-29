@@ -14,7 +14,7 @@ python run_rgbd_camera.py
 ## Explanation of communication with **component_monitoring**
 Fault Tolerant Component is transferring data (e.g.: pointcloud) to the Component Monitoring with the use of ROS message bus. Respective monitors in the Component Monitoring part are monitoring the data and generating events into Kafka message bus. Those events are then received by the Fault Tolerant Component and an appriopriate reaction is performed.
 
-Additionally, the fault tolerant component is able to turn off/on the respective monitors. It is done by sending an appriopriate command to the Component Monitoring (more precisely `monitor_manager`).
+Additionally, the Fault Tolerant Component is able to turn off/on the respective monitors. It is done by sending an appriopriate command to the Component Monitoring (more precisely `monitor_manager`).
 
 The complete communication schema is depicted below with the Internal Block Diagram.
 
@@ -22,11 +22,23 @@ The complete communication schema is depicted below with the Internal Block Diag
 
 The messages sent within the Kafka message bus are in the form of JSON. There are two types of messages:
 
-* general mesage - it that case it is used to send commands (`general.json`)
-* event message - in that case specific format is used for the minimal working example (`monitoring.json`)
+* general message - it that case it is used to send commands (`general.json`), the message is composed of the following fields:
+  * `source_id` - unique id of the publisher (e.g. id of the component)
+  * `target_id` - list of the ids of the receivers (e.g. ids of the monitors)
+  * `type` - type of the message (e.g.: ack (acknowledgement), cmd (command))
+  * `message`
+    * `command` - command for the receiver (e.g. shutdown or activate), this field is used when the type of the message is `cmd`
+    * `status` - status of the publisher performing the command (e.g.: success,failure, fatal), thie field is used when the type of the message is `ack`,
+* event message - in that case specific format is used for the minimal working example (`monitoring.json`):
+  * `monitorName` - name of the monitor that generated the event
+  * `monitorDescription` - description of the monitor
+  * `healthStatus`
+    * `nans` - field indicating if the monitor considers the number of NaN values in the received point cloud (from the component) as too big (`true`) or as normal (`false`)
 
 ## Configuration
+
 The Fault Tolerant Component needs to have assigned certain parameters which are depicted in the configuration file `config.yaml`. All of the parameters are explained below:
+
 * `id` - unique id of the fault tolerant component
 * `data_input_topics` - ROS topic from which the data is received by the component
 * `data_output_topics` - ROS topic to which the data is put from the component
