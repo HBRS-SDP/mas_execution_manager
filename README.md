@@ -1,15 +1,20 @@
 # ``mas_execution_manager``
 
 # Table of Contents
-1. [Summary](#Summary)
-2. [Package organisation](#package-organisation)
-3. [Dependencies](#dependencies)
-5. [Scenario execution](#scenario-execution)
-    1. [State machine configuration file syntax](#state-machine-configuration-file-syntax)
-    2. [State implementations](#state-implementations)
-    3. [Examples](#examples)
-    4. [Launch file parameters](#launch-file-parameters)
-    5. [MAS domestic-specific scenario state base](#mas-domestic-specific-scenario-state-base)
+- [``mas_execution_manager``](#mas_execution_manager)
+- [Table of Contents](#table-of-contents)
+  - [Summary](#summary)
+    - [Action execution](#action-execution)
+    - [Scenario execution](#scenario-execution)
+  - [Package organisation](#package-organisation)
+  - [Dependencies](#dependencies)
+  - [Scenario execution](#scenario-execution-1)
+    - [State machine configuration file syntax](#state-machine-configuration-file-syntax)
+    - [State implementations](#state-implementations)
+    - [Examples](#examples)
+    - [Launch file parameters](#launch-file-parameters)
+    - [MAS domestic-specific scenario state base](#mas-domestic-specific-scenario-state-base)
+    - [Component State Machine](#component-state-machine)
 
 ## Summary
 
@@ -45,6 +50,7 @@ The package also defines a scenario state base class that defines various functi
 The package has the following structure:
 ```
 mas_execution_manager
+|    requirements.txt
 |    package.xml
 |    CMakeLists.txt
 |    setup.py
@@ -56,14 +62,17 @@ mas_execution_manager
 |         |    sm_params.py
 |         |____sm_loader.py
 |____ros
-     |____src
-     |    |____mas_execution_manager
-     |    |    |    __init__.py
-     |    |    |____scenario_state_base.py
-     |    |
-     |____scripts
-          |____state_machine_creator
-
+|    |____src
+|    |    |____mas_execution_manager
+|    |    |    |    __init__.py
+|    |    |    |____scenario_state_base.py
+|    |    |
+|    |____scripts
+|         |____state_machine_creator
+|____component_sm
+     |    component_sm_base.py
+     |    rgbd_camera_sm.py
+     |____run_rgbd_camera.py
 ```
 
 ## Dependencies
@@ -377,3 +386,6 @@ class StateName(ScenarioStateBase):
 ```
 
 If the states in a scenario state machine inherit from `ScenarioStateBase`, it is necessary to launch the ROSPlan components and mongodb_store together with the state machine creator. The [`mdr_rosplan_interface`](https://github.com/b-it-bots/mas_domestic_robotics/tree/devel/mdr_planning/mdr_rosplan_interface) package includes a launcher for these components. If states inherit from `ScenarioStateBase`, but do not use any of the functionalities of ROSPlan or mongodb_store, simply including this launcher is sufficient (as shown [here](https://github.com/b-it-bots/mas_domestic_robotics/blob/devel/mdr_planning/mdr_scenarios/mdr_demos/mdr_demo_describe_people/ros/launch/describe_people.launch)); if these functionalities are used, some of the arguments in the launch file need to be set (as illustrated [here](https://github.com/b-it-bots/mas_domestic_robotics/blob/devel/mdr_planning/mdr_scenarios/mdr_demos/mdr_demo_simple_pick_and_place/ros/launch/pick_and_place.launch)).
+
+### Component State Machine
+The Component State Machine is the additional project that contains concept for implementation of the fault tolerant robot components. The code as well as more detailed explanation are contained in the directory [component_sm](component_sm).
