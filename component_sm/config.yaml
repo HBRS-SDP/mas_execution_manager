@@ -5,7 +5,7 @@ data_transfer_timeout: 5.0 # (seconds) if component can not publish data for thi
 
 monitoring:
   pipeline_server: 'localhost:9092'
-  control_topic: 'hsrb_monitoring_control'
+  control_topic: 'monitor_manager'
   monitors: 
     - id: 'rgbd_camera'
-      feedback_topic: 'hsrb_monitoring_feedback_rgbd'
+      feedback_topic: 'rgbd_camera_pointcloud_monitor_monitor_eventbus'
