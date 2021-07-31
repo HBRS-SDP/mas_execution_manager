@@ -132,7 +132,7 @@ class RGBDCameraSM(ComponentSMBase):
                 if not time_now - rospy.Duration(self._timeout) < self._last_active_time:
                     break
 
-                if message.value['healthStatus']['nans']:
+                if message.value['healthStatus']['nans'] > 0.65:
                     rospy.logerr('[{}][{}] Received poincloud contains too many NaN values.'.
                     format(self.name, self._id))
                     return FTSMTransitions.RECOVER

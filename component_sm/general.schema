@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
     "source_id": {
@@ -21,15 +20,11 @@
         },
         "status": {
           "type": "string"
-        },
-        "thread_id": {
-          "type": "string"
         }
       },
       "required": [
         "command",
-        "status",
-        "thread_id"
+        "status"
       ]
     },
     "type": {
