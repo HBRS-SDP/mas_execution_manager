@@ -18,6 +18,10 @@ class RGBDCameraSM(ComponentSMBase):
     component_id : str,
         Unique id of the component
 
+    nans_threshold : float
+        Percentage threshold of NaN values (in the pointcloud) that is acceptable.
+        If number of NaN values exceeds this limit, the component starts recovery behaviour.
+
     data_input_topic : str
         Name of the topic for obtaining the point cloud 
                  
@@ -54,6 +58,7 @@ class RGBDCameraSM(ComponentSMBase):
     """
     def __init__(self, 
                  component_id,
+                 nans_threshold,
                  data_input_topic,
                  data_output_topic,
                  monitoring_control_topic,
@@ -80,6 +85,7 @@ class RGBDCameraSM(ComponentSMBase):
         
         self._pointcloud = None
         self._timeout = data_transfer_timeout
+        self._nans_threshold = nans_threshold
 
         # ROS poincloud listener
         self._pointcloud_listener = \
@@ -132,7 +138,7 @@ class RGBDCameraSM(ComponentSMBase):
                 if not time_now - rospy.Duration(self._timeout) < self._last_active_time:
                     break
 
-                if message.value['healthStatus']['nans'] > 0.65:
+                if message.value['healthStatus']['nans'] > self._nans_threshold:
                     rospy.logerr('[{}][{}] Received poincloud contains too many NaN values.'.
                     format(self.name, self._id))
                     return FTSMTransitions.RECOVER

@@ -2,6 +2,8 @@ id: component_1
 data_input_topics: ['/hsrb/head_rgbd_sensor/depth_registered/points']
 data_output_topics: ['/hsrb/head_rgbd_sensor/pointcloud']
 data_transfer_timeout: 5.0 # (seconds) if component can not publish data for this time, reconfiguration is activated
+threshold: 0.65 # Percentage threshold of NaN values (in the pointcloud) that is acceptable.
+                # If number of NaN values exceeds this limit, the component starts recovery behaviour.
 
 monitoring:
   pipeline_server: 'localhost:9092'
