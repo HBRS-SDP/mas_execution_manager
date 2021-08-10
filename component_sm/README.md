@@ -8,6 +8,7 @@ The fault tolerance of the component is based on two aspects:
 ## Usage
 To run the fault tolerant RGBD camera, which is a minimal working example of the fault tolerant component, please use the below command:
 ```python
+cd scripts
 python run_rgbd_camera.py
 ```
 

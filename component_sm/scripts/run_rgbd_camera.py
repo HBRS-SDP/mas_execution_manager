@@ -6,10 +6,10 @@ import yaml
 if __name__ == '__main__':
     rospy.init_node('stream_pointcloud')
 
-    general_message_format = json.load(open('general.json'))
-    general_message_schema = json.load(open('general.schema'))
-    monitoring_message_schema = json.load(open('monitoring.schema'))
-    config = yaml.safe_load(open('config.yaml'))
+    general_message_format = json.load(open('../schemas/general.json'))
+    general_message_schema = json.load(open('../schemas/general.schema'))
+    monitoring_message_schema = json.load(open('../schemas/monitoring.schema'))
+    config = yaml.safe_load(open('../config/config.yaml'))
 
     stream_pointcloud = RGBDCameraSM(
         component_id=config['id'],

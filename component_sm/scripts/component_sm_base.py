@@ -6,6 +6,7 @@ from bson import json_util
 import numpy as np
 import rospy
 from abc import abstractmethod
+from component_monitoring_enumerations import MessageEnums
 
 class ComponentSMBase(FTSM):
     """
@@ -130,7 +131,7 @@ class ComponentSMBase(FTSM):
         message['target_id'] = self._monitors_ids
         message['message']['command'] = cmd
         message['message']['status'] = ''
-        message['type'] = 'cmd'
+        message['type'] = MessageEnums.TYPE_CMD
         
         future = \
             self._monitor_control_producer.send(
@@ -153,8 +154,8 @@ class ComponentSMBase(FTSM):
                     )
 
                 if self._id in message.value['target_id'] and \
-                    message.value['type'] == 'ack' and \
-                        message.value['message']['status'] == 'success':
+                    message.value['type'] == MessageEnums.TYPE_ACK and \
+                        message.value['message']['status'] == MessageEnums.STATUS_SUCCESS:
                             return True
 
                 if rospy.Time.now() - start_time > rospy.Duration(response_timeout):
@@ -186,7 +187,7 @@ class ComponentSMBase(FTSM):
                 format(self.name, self._id)
             )
 
-            success = self.__control_monitoring(cmd='shutdown')
+            success = self.__control_monitoring(cmd=MessageEnums.CMD_SHUTDOWN)
 
             if success:
                 self._to_be_monitored = False
@@ -221,7 +222,7 @@ class ComponentSMBase(FTSM):
                 format(self.name, self._id)
             )
 
-            success = self.__control_monitoring(cmd='activate')
+            success = self.__control_monitoring(cmd=MessageEnums.CMD_START)
 
             if success:
                 self._to_be_monitored = True
