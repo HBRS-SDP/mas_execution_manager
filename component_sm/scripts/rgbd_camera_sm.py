@@ -118,7 +118,6 @@ class RGBDCameraSM(ComponentSMBase):
         self._pointcloud = data
 
         # Publishing poincloud to component monitoring
-        #rospy.loginfo('Now I publish pointcloud to component monitoring')
         self._pointcloud_publisher.publish(self._pointcloud)
 
     def handle_monitoring_feedback(self):
@@ -138,7 +137,7 @@ class RGBDCameraSM(ComponentSMBase):
                 if not time_now - rospy.Duration(self._timeout) < self._last_active_time:
                     break
 
-                if message.value['healthStatus']['nans'] > self._nans_threshold:
+                if message.value['healthStatus']['nan_ratio'] > self._nans_threshold:
                     rospy.logerr('[{}][{}] Received poincloud contains too many NaN values.'.
                     format(self.name, self._id))
                     return FTSMTransitions.RECOVER
