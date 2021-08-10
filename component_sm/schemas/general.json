@@ -1,7 +1,8 @@
 {
-    "source_id":"<unique>",
-    "target_id":["<monitorName>"],
-    "message":{
-      "command":"shutdown"
-    }
+  "from": "",
+  "to": "",
+  "message": "",
+  "body": {
+
   }
+}

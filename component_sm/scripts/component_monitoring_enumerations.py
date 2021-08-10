@@ -1,8 +1,16 @@
-class MessageEnums():
-    CMD_SHUTDOWN = 'shutdown'
-    CMD_START = 'activate'
-    STATUS_FAILURE = 400
-    STATUS_SUCCESS = 200
-    TYPE_ACK = 'status'
-    TYPE_CMD = 'command'
-    STORAGE = 'storage'
+from enum import Enum
+
+
+class Command(Enum):
+    START = 'activate'
+    SHUTDOWN = 'shutdown'
+    STORE = 'store'
+
+class ResponseCode(Enum):
+    SUCCESS = 200
+    FAILURE = 400
+
+class MessageType(Enum):
+    RESPONSE = 'response'
+    REQUEST = 'request'
+    INFO = 'info'

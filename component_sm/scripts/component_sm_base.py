@@ -6,7 +6,7 @@ from bson import json_util
 import numpy as np
 import rospy
 from abc import abstractmethod
-from component_monitoring_enumerations import MessageEnums
+from component_monitoring_enumerations import MessageType, Command, ResponseCode
 
 
 class ComponentSMBase(FTSM):
@@ -75,6 +75,7 @@ class ComponentSMBase(FTSM):
                                               max_recovery_attempts)
         self._to_be_monitored = False
         self._id = component_id
+        self._manager_id = 'manager'
         self._monitors_ids = monitors_ids
         self._monitoring_message_schemas = monitoring_message_schemas
         self._general_message_schema = general_message_schema
@@ -115,12 +116,12 @@ class ComponentSMBase(FTSM):
         '''
         pass
 
-    def __control_monitoring(self, cmd, response_timeout=5):
+    def __control_request(self, command: Command, response_timeout=5):
         '''
         Function responsible for sending a command to the monitors responsible for monitoring the current component.
 
             Parameters:
-                cmd (str): Command for monitor manager to manage monitors (shutdown or activate)
+                command (Command): Command for monitor manager to manage monitors (shutdown, activate, store)
                 response_timeout (int): Timeout to wait for response from the monitor manager
             
             Returns:
@@ -128,9 +129,11 @@ class ComponentSMBase(FTSM):
                       False - executing of the command ended with failure 
         '''
         message = self._general_message_format
-        message['source_id'] = self._id
-        message['target_id'] = self._monitors_ids
-        message['message']['command'] = cmd
+        message['from'] = self._id
+        message['to'] = self._manager_id
+        message['message'] = MessageType.REQUEST.value
+        message['body']['command'] = command.value
+        message['body']['monitors'] = self._monitors_ids
 
         future = \
             self._monitor_control_producer.send(
@@ -151,11 +154,11 @@ class ComponentSMBase(FTSM):
                     instance=message.value,
                     schema=self._general_message_schema
                 )
-
-                if self._id in message.value['target_id'] and \
-                    MessageEnums.TYPE_ACK in message.value['message'] and \
-                        message.value['message']['status']['code'] == MessageEnums.STATUS_SUCCESS:
-                    return True
+                message_type = MessageType(message.value['message'])
+                if self._id == message.value['to'] and message_type == MessageType.RESPONSE:
+                    response_code = ResponseCode(message.value['body']['status']['code'])
+                    if response_code == ResponseCode.SUCCESS:
+                        return True
 
                 if rospy.Time.now() - start_time > rospy.Duration(response_timeout):
                     rospy.logwarn('[{}][{}] Obtaining only responses from the monitor manager with incorrect data.'.
@@ -186,7 +189,7 @@ class ComponentSMBase(FTSM):
                     format(self.name, self._id)
             )
 
-            success = self.__control_monitoring(cmd=MessageEnums.CMD_SHUTDOWN)
+            success = self.__control_request(command=Command.SHUTDOWN)
 
             if success:
                 self._to_be_monitored = False
@@ -221,7 +224,7 @@ class ComponentSMBase(FTSM):
                     format(self.name, self._id)
             )
 
-            success = self.__control_monitoring(cmd=MessageEnums.CMD_START)
+            success = self.__control_request(command=Command.START)
 
             if success:
                 self._to_be_monitored = True
