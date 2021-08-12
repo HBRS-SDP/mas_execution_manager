@@ -133,7 +133,13 @@ class ComponentSMBase(FTSM):
         message['to'] = self._manager_id
         message['message'] = MessageType.REQUEST.value
         message['body']['command'] = command.value
-        message['body']['monitors'] = self._monitors_ids
+        if command in [Command.START_STORE, Command.STOP_STORE]:
+            monitors = list()
+            for monitor, topic in zip(self._monitors_ids, self._monitoring_feedback_topics):
+                monitors.append({"name": monitor, "topic": topic})
+            message['body']['monitors'] = monitors
+        else:
+            message['body']['monitors'] = self._monitors_ids
 
         future = \
             self._monitor_control_producer.send(
@@ -155,9 +161,17 @@ class ComponentSMBase(FTSM):
                     schema=self._general_message_schema
                 )
                 message_type = MessageType(message.value['message'])
+                if self._id != message.value['to']:
+                    continue
                 if self._id == message.value['to'] and message_type == MessageType.RESPONSE:
-                    response_code = ResponseCode(message.value['body']['status']['code'])
+                    response_code = ResponseCode(message.value['body']['code'])
                     if response_code == ResponseCode.SUCCESS:
+                        if command in [Command.START, Command.SHUTDOWN]:
+                            for monitor in message.value['body']['monitors']:
+                                rospy.loginfo(self._monitors_ids)
+                                rospy.loginfo(self._monitoring_feedback_topics)
+                                index = self._monitors_ids.index(monitor['name'])
+                                self._monitoring_feedback_topics[index] = monitor['topic']
                         return True
 
                 if rospy.Time.now() - start_time > rospy.Duration(response_timeout):
@@ -225,6 +239,7 @@ class ComponentSMBase(FTSM):
             )
 
             success = self.__control_request(command=Command.START)
+            success = self.__control_request(command=Command.START_STORE)
 
             if success:
                 self._to_be_monitored = True

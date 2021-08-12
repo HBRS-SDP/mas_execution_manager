@@ -4,7 +4,8 @@ from enum import Enum
 class Command(Enum):
     START = 'activate'
     SHUTDOWN = 'shutdown'
-    STORE = 'store'
+    START_STORE = 'start_store'
+    STOP_STORE = 'stop_store'
 
 class ResponseCode(Enum):
     SUCCESS = 200

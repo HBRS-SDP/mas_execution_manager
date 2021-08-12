@@ -10,12 +10,12 @@
     "healthStatus": {
       "type": "object",
       "properties": {
-        "nans": {
+        "nan_ratio": {
           "type": "number"
         }
       },
       "required": [
-        "nans"
+        "nan_ratio"
       ]
     }
   },

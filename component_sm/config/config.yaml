@@ -10,4 +10,4 @@ monitoring:
   control_topic: 'monitor_manager'
   monitors: 
     - id: 'pointcloud_monitor'
-      feedback_topic: 'rgbd_camera_pointcloud_monitor_monitor_eventbus'
+      feedback_topic: 'rgbd_camera_pointcloud_monitor_eventbus'
