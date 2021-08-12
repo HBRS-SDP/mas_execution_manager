@@ -1,4 +1,5 @@
 id: 'rgbd_camera'
+monitor_manager_id: 'manager'
 data_input_topics: ['/hsrb/head_rgbd_sensor/depth_registered/points']
 data_output_topics: ['/hsrb/head_rgbd_sensor/pointcloud']
 data_transfer_timeout: 5.0 # (seconds) if component can not publish data for this time, reconfiguration is activated
