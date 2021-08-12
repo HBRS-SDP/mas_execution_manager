@@ -13,6 +13,7 @@ if __name__ == '__main__':
 
     stream_pointcloud = RGBDCameraSM(
         component_id=config['id'],
+        monitor_manager_id=config['monitor_manager_id'],
         nans_threshold=config['threshold'],
         data_input_topic=config['data_input_topics'][0],
         data_output_topic=config['data_output_topics'][0],

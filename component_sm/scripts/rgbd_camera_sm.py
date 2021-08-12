@@ -58,6 +58,7 @@ class RGBDCameraSM(ComponentSMBase):
     """
     def __init__(self, 
                  component_id,
+                 monitor_manager_id,
                  nans_threshold,
                  data_input_topic,
                  data_output_topic,
@@ -72,6 +73,7 @@ class RGBDCameraSM(ComponentSMBase):
                  max_recovery_attempts=1):
         super(RGBDCameraSM, self).__init__('RGBDCameraSM', 
                                            component_id=component_id,
+                                           monitor_manager_id=monitor_manager_id,
                                            dependencies=[], 
                                            max_recovery_attempts=max_recovery_attempts,
                                            monitoring_control_topic=monitoring_control_topic,
@@ -147,6 +149,7 @@ class RGBDCameraSM(ComponentSMBase):
             
             if last_message is None and self._to_be_monitored:
                 rospy.logwarn('[{}][{}] No feedback from the monitor.'.
+                # TO-DO: Count to three and try to turn o the monitoring one more time then
                 format(self.name, self._id))
 
         except ValidationError:

@@ -58,6 +58,7 @@ class ComponentSMBase(FTSM):
     def __init__(self,
                  name,
                  component_id,
+                 monitor_manager_id,
                  dependencies,
                  monitoring_control_topic,
                  monitoring_pipeline_server,
@@ -75,7 +76,7 @@ class ComponentSMBase(FTSM):
                                               max_recovery_attempts)
         self._to_be_monitored = False
         self._id = component_id
-        self._manager_id = 'manager'
+        self._monitor_manager_id = monitor_manager_id
         self._monitors_ids = monitors_ids
         self._monitoring_message_schemas = monitoring_message_schemas
         self._general_message_schema = general_message_schema
@@ -121,7 +122,7 @@ class ComponentSMBase(FTSM):
         Function responsible for sending a command to the monitors responsible for monitoring the current component.
 
             Parameters:
-                command (Command): Command for monitor manager to manage monitors (shutdown, activate, store)
+                command (Command): Command for monitor manager/storage manager to manage monitoring/storage
                 response_timeout (int): Timeout to wait for response from the monitor manager
             
             Returns:
@@ -130,9 +131,10 @@ class ComponentSMBase(FTSM):
         '''
         message = self._general_message_format
         message['from'] = self._id
-        message['to'] = self._manager_id
+        message['to'] = self._monitor_manager_id
         message['message'] = MessageType.REQUEST.value
         message['body']['command'] = command.value
+
         if command in [Command.START_STORE, Command.STOP_STORE]:
             monitors = list()
             for monitor, topic in zip(self._monitors_ids, self._monitoring_feedback_topics):
@@ -161,18 +163,25 @@ class ComponentSMBase(FTSM):
                     schema=self._general_message_schema
                 )
                 message_type = MessageType(message.value['message'])
-                if self._id != message.value['to']:
-                    continue
-                if self._id == message.value['to'] and message_type == MessageType.RESPONSE:
+
+                #if self._id != message.value['to']:
+                #    continue
+
+                if self._id == message.value['to'] and \
+                    self._monitor_manager_id == message.value['from'] and \
+                    message_type == MessageType.RESPONSE:
                     response_code = ResponseCode(message.value['body']['code'])
                     if response_code == ResponseCode.SUCCESS:
-                        if command in [Command.START, Command.SHUTDOWN]:
+                        if command == Command.START:
                             for monitor in message.value['body']['monitors']:
-                                rospy.loginfo(self._monitors_ids)
-                                rospy.loginfo(self._monitoring_feedback_topics)
                                 index = self._monitors_ids.index(monitor['name'])
                                 self._monitoring_feedback_topics[index] = monitor['topic']
+                                # TO-DO: Initialize the kafka consumers here
+                            rospy.loginfo('[{}][{}] Received kafka topics for monitors: {}. The topics are: {}.'.
+                                  format(self.name, self._id, self._monitors_ids, self._monitoring_feedback_topics))
                         return True
+                    else:
+                        return False
 
                 if rospy.Time.now() - start_time > rospy.Duration(response_timeout):
                     rospy.logwarn('[{}][{}] Obtaining only responses from the monitor manager with incorrect data.'.
