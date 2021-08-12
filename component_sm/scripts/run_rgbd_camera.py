@@ -19,7 +19,6 @@ if __name__ == '__main__':
         data_output_topic=config['data_output_topics'][0],
         monitoring_control_topic=config['monitoring']['control_topic'],
         monitoring_pipeline_server=config['monitoring']['pipeline_server'],
-        monitoring_feedback_topics=[config['monitoring']['monitors'][0]['feedback_topic']],
         monitors_ids=[config['monitoring']['monitors'][0]['id']],
         general_message_format=general_message_format,
         general_message_schema=general_message_schema,

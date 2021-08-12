@@ -62,7 +62,6 @@ class ComponentSMBase(FTSM):
                  dependencies,
                  monitoring_control_topic,
                  monitoring_pipeline_server,
-                 monitoring_feedback_topics,
                  monitors_ids,
                  general_message_format,
                  general_message_schema,
@@ -83,7 +82,7 @@ class ComponentSMBase(FTSM):
         self._general_message_format = general_message_format
         self._monitoring_control_topic = monitoring_control_topic
         self._monitoring_pipeline_server = monitoring_pipeline_server
-        self._monitoring_feedback_topics = monitoring_feedback_topics
+        self._monitoring_feedback_topics = []
         self._monitoring_timeout = monitoring_timeout
 
         # Kafka monitor control producer
@@ -101,14 +100,9 @@ class ComponentSMBase(FTSM):
                 consumer_timeout_ms=self._monitoring_timeout * 1000
             )
 
-        # Kafka monitor feedback listener
-        self._monitor_feedback_listener = \
-            KafkaConsumer(
-                *self._monitoring_feedback_topics,
-                bootstrap_servers=monitoring_pipeline_server,
-                value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-                consumer_timeout_ms=self._monitoring_timeout * 1000
-            )
+        # Kafka monitor feedback listener placeholder
+        self._monitor_feedback_listener = None
+        
 
     @abstractmethod
     def handle_monitoring_feedback(self):
@@ -116,6 +110,16 @@ class ComponentSMBase(FTSM):
         Function for handling messages from the monitors responsible for monitoring the current component.
         '''
         pass
+
+    def __init_monitor_feedback_listener(self, topics):
+        self._monitoring_feedback_topics = topics
+        self._monitor_feedback_listener = \
+            KafkaConsumer(
+                *topics,
+                bootstrap_servers=self._monitoring_pipeline_server,
+                value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+                consumer_timeout_ms=self._monitoring_timeout * 1000
+            )
 
     def __control_request(self, command: Command, response_timeout=5):
         '''
@@ -137,6 +141,9 @@ class ComponentSMBase(FTSM):
 
         if command in [Command.START_STORE, Command.STOP_STORE]:
             monitors = list()
+            if not self._monitoring_feedback_topics:
+                rospy.logwarn('[{}][{}] Attempted to run database component, but topics names with events were not received')
+                return False
             for monitor, topic in zip(self._monitors_ids, self._monitoring_feedback_topics):
                 monitors.append({"name": monitor, "topic": topic})
             message['body']['monitors'] = monitors
@@ -174,9 +181,10 @@ class ComponentSMBase(FTSM):
                     if response_code == ResponseCode.SUCCESS:
                         if command == Command.START:
                             for monitor in message.value['body']['monitors']:
+                                topics = [0]*len(self._monitors_ids)
                                 index = self._monitors_ids.index(monitor['name'])
-                                self._monitoring_feedback_topics[index] = monitor['topic']
-                                # TO-DO: Initialize the kafka consumers here
+                                topics[index] = monitor['topic']
+                                self.__init_monitor_feedback_listener(topics)
                             rospy.loginfo('[{}][{}] Received kafka topics for monitors: {}. The topics are: {}.'.
                                   format(self.name, self._id, self._monitors_ids, self._monitoring_feedback_topics))
                         return True
