@@ -125,30 +125,31 @@ class RGBDCameraSM(ComponentSMBase):
              
         last_message = None
         try:
-            for message in self._monitor_feedback_listener:
-                # Validate the correctness of the message
-                validate(instance=message.value, schema=self._monitoring_message_schemas[0])
+            if self._monitor_feedback_listener:
+                for message in self._monitor_feedback_listener:
+                    # Validate the correctness of the message
+                    validate(instance=message.value, schema=self._monitoring_message_schemas[0])
 
-                self.turn_on_monitoring()
+                    self.turn_on_monitoring()
+                    
+                    last_message = message
+
+                    time_now = rospy.Time.now()
+                    if not time_now - rospy.Duration(self._timeout) < self._last_active_time:
+                        break
+
+                    if message.value['healthStatus']['nan_ratio'] > self._nans_threshold:
+                        rospy.logerr('[{}][{}] Received poincloud contains too many NaN values.'.
+                        format(self.name, self._id))
+                        return FTSMTransitions.RECOVER
+                    else:
+                        rospy.loginfo('[{}][{}] Received poincloud contains acceptable number of NaN values.'.
+                        format(self.name, self._id))
                 
-                last_message = message
-
-                time_now = rospy.Time.now()
-                if not time_now - rospy.Duration(self._timeout) < self._last_active_time:
-                    break
-
-                if message.value['healthStatus']['nan_ratio'] > self._nans_threshold:
-                    rospy.logerr('[{}][{}] Received poincloud contains too many NaN values.'.
+                if last_message is None and self._to_be_monitored:
+                    rospy.logwarn('[{}][{}] No feedback from the monitor.'.
+                    # TO-DO: Count to three and try to turn o the monitoring one more time then
                     format(self.name, self._id))
-                    return FTSMTransitions.RECOVER
-                else:
-                    rospy.loginfo('[{}][{}] Received poincloud contains acceptable number of NaN values.'.
-                    format(self.name, self._id))
-            
-            if last_message is None and self._to_be_monitored:
-                rospy.logwarn('[{}][{}] No feedback from the monitor.'.
-                # TO-DO: Count to three and try to turn o the monitoring one more time then
-                format(self.name, self._id))
 
         except ValidationError:
             rospy.logwarn('[{}][{}] Invalid format of the feedback message from the monitor.'.

@@ -85,12 +85,14 @@ class ComponentSMBase(FTSM):
         self._monitoring_feedback_topics = []
         self._monitoring_timeout = monitoring_timeout
 
+        # TO-DO: Make robust when kafak not available, but try several times
         # Kafka monitor control producer
         self._monitor_control_producer = \
             KafkaProducer(
                 bootstrap_servers=monitoring_pipeline_server
             )
 
+        # TO-DO: Make robust when kafak not available, but try several times
         # Kafka monitor control listener
         self._monitor_control_listener = \
             KafkaConsumer(
@@ -113,6 +115,7 @@ class ComponentSMBase(FTSM):
 
     def __init_monitor_feedback_listener(self, topics):
         self._monitoring_feedback_topics = topics
+        # TO-DO: Make robust when kafak not available, but try several times
         self._monitor_feedback_listener = \
             KafkaConsumer(
                 *topics,
@@ -133,6 +136,8 @@ class ComponentSMBase(FTSM):
                 bool: True - executiong of the command ended successfully
                       False - executing of the command ended with failure 
         '''
+
+        # TO-DO: Split into send and receive parts
         message = self._general_message_format
         message['from'] = self._id
         message['to'] = self._monitor_manager_id
@@ -142,7 +147,8 @@ class ComponentSMBase(FTSM):
         if command in [Command.START_STORE, Command.STOP_STORE]:
             monitors = list()
             if not self._monitoring_feedback_topics:
-                rospy.logwarn('[{}][{}] Attempted to run database component, but topics names with events were not received')
+                rospy.logwarn('[{}][{}] Attempted to run database component, but topics names with events were not received'.
+                format(self.name, self._id))
                 return False
             for monitor, topic in zip(self._monitors_ids, self._monitoring_feedback_topics):
                 monitors.append({"name": monitor, "topic": topic})
@@ -206,6 +212,8 @@ class ComponentSMBase(FTSM):
                     format(self.name, self._id, self._monitors_ids))
             return False
 
+    # TO-DO: Make generic function with logging for control of database as well as monitoring
+    # TO-DO: Make seperate functions for control of the database and monitoring
     def turn_off_monitoring(self):
         '''
         Function responsible for turning off the monitors responsible for monitoring the current component.
