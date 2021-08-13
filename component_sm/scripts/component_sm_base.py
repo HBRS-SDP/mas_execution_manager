@@ -1,4 +1,5 @@
 from pyftsm.ftsm import FTSM, FTSMTransitions
+import kafka
 from kafka import KafkaConsumer, KafkaProducer
 from jsonschema import validate, ValidationError
 import json
@@ -84,27 +85,22 @@ class ComponentSMBase(FTSM):
         self._monitoring_pipeline_server = monitoring_pipeline_server
         self._monitoring_feedback_topics = []
         self._monitoring_timeout = monitoring_timeout
+        self._is_kafka_available = False
 
-        # TO-DO: Make robust when kafak not available, but try several times
-        # Kafka monitor control producer
-        self._monitor_control_producer = \
-            KafkaProducer(
-                bootstrap_servers=monitoring_pipeline_server
-            )
-
-        # TO-DO: Make robust when kafak not available, but try several times
-        # Kafka monitor control listener
-        self._monitor_control_listener = \
-            KafkaConsumer(
-                self._monitoring_control_topic,
-                bootstrap_servers=monitoring_pipeline_server,
-                value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-                consumer_timeout_ms=self._monitoring_timeout * 1000
-            )
+        # Kafka monitor control producer placeholder
+        self._monitor_control_producer = None
+        
+        # Kafka monitor control listener placeholder
+        self._monitor_control_listener = None
 
         # Kafka monitor feedback listener placeholder
         self._monitor_feedback_listener = None
-        
+
+        #flag if kafka communication is working
+        self._is_kafka_available = False
+
+        #connecting to kafka
+        self.__connect_to_control_pipeline()
 
     @abstractmethod
     def handle_monitoring_feedback(self):
@@ -113,16 +109,64 @@ class ComponentSMBase(FTSM):
         '''
         pass
 
-    def __init_monitor_feedback_listener(self, topics):
-        self._monitoring_feedback_topics = topics
-        # TO-DO: Make robust when kafak not available, but try several times
-        self._monitor_feedback_listener = \
+    def __connect_to_control_pipeline(self):
+        retry_counter = 0
+
+        while not self._is_kafka_available and retry_counter < 3 :
+            retry_counter += 1
+            self._is_kafka_available = self.__init_control_pipeline()
+            if not self._is_kafka_available:
+                rospy.logwarn('[{}][{}] No kafka server detected. Retrying ...'.
+                format(self.name, self._id))
+                rospy.sleep(5)
+      
+        if self._is_kafka_available:
+            rospy.logwarn('[{}][{}] Kafka server detected. Component will try to start with monitoring.'.
+                format(self.name, self._id))
+        else: 
+            rospy.logwarn('[{}][{}] No kafka server detected. Component will start without monitoring.'.
+                format(self.name, self._id))
+
+    def __init_listener(self, topics):
+        listener = \
             KafkaConsumer(
                 *topics,
                 bootstrap_servers=self._monitoring_pipeline_server,
                 value_deserializer=lambda m: json.loads(m.decode('utf-8')),
                 consumer_timeout_ms=self._monitoring_timeout * 1000
             )
+        return listener
+    
+    def __init_producer(self):
+        producer = \
+            KafkaProducer(
+                bootstrap_servers=self._monitoring_pipeline_server
+            )
+        return producer
+
+    def __init_monitor_feedback_listener(self, topics):
+        self._monitoring_feedback_topics = topics
+        # TO-DO: Make robust when kafak not available, but try several times
+        self._monitor_feedback_listener = self.__init_listener(topics)
+
+    def __init_control_pipeline(self):
+        try:
+            # Kafka monitor producer listener
+            self._monitor_control_producer = self.__init_producer()
+
+            # Kafka monitor control listener
+            self._monitor_control_listener = \
+                self.__init_listener([self._monitoring_control_topic])
+            
+            return True
+
+        except kafka.errors.NoBrokersAvailable as err:
+            # Kafka monitor control producer placeholder
+            self._monitor_control_producer = None
+            # Kafka monitor control listener placeholder
+            self._monitor_control_listener = None
+
+            return False
 
     def __control_request(self, command: Command, response_timeout=5):
         '''

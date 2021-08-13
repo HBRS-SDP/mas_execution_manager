@@ -160,9 +160,17 @@ class RGBDCameraSM(ComponentSMBase):
             rospy.logwarn('[{}][{}] Invalid format of the feedback message from the monitor.'.
             format(self.name, self._id))
 
+    def operation_without_monitoring(self):
+        rospy.loginfo('[{}][{}] Component operates without monitoring.'.
+            format(self.name, self._id))
+        rospy.sleep(2)
+
+    def operation_with_monitoring(self):
+        self.turn_on_monitoring()
+        return self.handle_monitoring_feedback() 
+
     def running(self):
         # Receiving events from component monitoring
-        
         monitor_feedback_handling_result = None
         time_now = rospy.Time.now()
 
@@ -170,16 +178,16 @@ class RGBDCameraSM(ComponentSMBase):
            self._last_active_time and self._pointcloud.data :
             time_now = rospy.Time.now()
             
-            self.turn_on_monitoring()
-
-            monitor_feedback_handling_result = self.handle_monitoring_feedback()    
+            if self._is_kafka_available:
+                monitor_feedback_handling_result = self.operation_with_monitoring()
+            else:
+                self.operation_without_monitoring()
 
         if monitor_feedback_handling_result is None:
             rospy.logerr('[{}][{}] Can not receive the poincloud from head RGBD Camera.'.
             format(self.name, self._id))
             self.turn_off_monitoring()
             return FTSMTransitions.RECONFIGURE
-        
         else:
             return monitor_feedback_handling_result
 
