@@ -86,6 +86,7 @@ class RGBDCameraSM(ComponentSMBase):
         self._pointcloud = None
         self._timeout = data_transfer_timeout
         self._nans_threshold = nans_threshold
+        self._no_feedback_counter = 0
 
         # ROS poincloud listener
         self._pointcloud_listener = \
@@ -124,13 +125,12 @@ class RGBDCameraSM(ComponentSMBase):
         time_now = rospy.Time.now()
              
         last_message = None
+
         try:
             if self._monitor_feedback_listener:
                 for message in self._monitor_feedback_listener:
                     # Validate the correctness of the message
                     validate(instance=message.value, schema=self._monitoring_message_schemas[0])
-
-                    self.turn_on_monitoring()
                     
                     last_message = message
 
@@ -147,9 +147,14 @@ class RGBDCameraSM(ComponentSMBase):
                         format(self.name, self._id))
                 
                 if last_message is None and self._to_be_monitored:
+                    self._no_feedback_counter += 1
                     rospy.logwarn('[{}][{}] No feedback from the monitor.'.
-                    # TO-DO: Count to three and try to turn o the monitoring one more time then
                     format(self.name, self._id))
+                    
+                    # Count to three and try to turn on the monitoring one more time then
+                    if self._no_feedback_counter >= 3:
+                        self._to_be_monitored = False
+                        self._no_feedback_counter = 0
 
         except ValidationError:
             rospy.logwarn('[{}][{}] Invalid format of the feedback message from the monitor.'.
