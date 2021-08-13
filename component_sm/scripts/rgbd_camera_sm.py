@@ -88,10 +88,16 @@ class RGBDCameraSM(ComponentSMBase):
         self._nans_threshold = nans_threshold
         self._no_feedback_counter = 0
 
+        self.__init_data_pipeline(input_topic=data_input_topic,
+                                  output_topic=data_output_topic)
+
+        self._last_active_time = rospy.Time.now()
+
+    def __init_data_pipeline(self, input_topic, output_topic):
         # ROS poincloud listener
         self._pointcloud_listener = \
             rospy.Subscriber(
-                data_input_topic, 
+                input_topic, 
                 PointCloud2,
                 self.__callback
                 )
@@ -99,12 +105,10 @@ class RGBDCameraSM(ComponentSMBase):
         # ROS pointcloud publisher
         self._pointcloud_publisher = \
             rospy.Publisher(
-                data_output_topic, 
+                output_topic, 
                 PointCloud2, 
                 queue_size=10
                 )
-
-        self._last_active_time = rospy.Time.now()
 
     def __callback(self, data):
         '''
@@ -197,7 +201,7 @@ class RGBDCameraSM(ComponentSMBase):
 
         # Code responsible for recovering the camera e.g. moving the head
         rospy.sleep(3)
-        
+
         return FTSMTransitions.DONE_RECOVERING
 
     def configuring(self):
