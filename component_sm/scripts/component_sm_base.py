@@ -168,20 +168,7 @@ class ComponentSMBase(FTSM):
 
             return False
 
-    def __control_request(self, command: Command, response_timeout=5):
-        '''
-        Function responsible for sending a command to the monitors responsible for monitoring the current component.
-
-            Parameters:
-                command (Command): Command for monitor manager/storage manager to manage monitoring/storage
-                response_timeout (int): Timeout to wait for response from the monitor manager
-            
-            Returns:
-                bool: True - executiong of the command ended successfully
-                      False - executing of the command ended with failure 
-        '''
-
-        # TO-DO: Split into send and receive parts
+    def __send_control_cmd(self, command: Command):
         message = self._general_message_format
         message['from'] = self._id
         message['to'] = self._monitor_manager_id
@@ -206,9 +193,9 @@ class ComponentSMBase(FTSM):
                 json.dumps(message,
                            default=json_util.default).encode('utf-8')
             )
-
-        result = future.get(timeout=60)
-
+        return future.get(timeout=60)
+    
+    def __receive_control_response(self, command: Command, response_timeout=5):
         try:
             start_time = rospy.Time.now()
 
@@ -219,10 +206,8 @@ class ComponentSMBase(FTSM):
                     instance=message.value,
                     schema=self._general_message_schema
                 )
-                message_type = MessageType(message.value['message'])
 
-                #if self._id != message.value['to']:
-                #    continue
+                message_type = MessageType(message.value['message'])
 
                 if self._id == message.value['to'] and \
                     self._monitor_manager_id == message.value['from'] and \
@@ -256,6 +241,24 @@ class ComponentSMBase(FTSM):
                     format(self.name, self._id, self._monitors_ids))
             return False
 
+    def __manage_control_request(self, command: Command, response_timeout=5):
+        '''
+        Function responsible for sending a command to the monitors responsible for monitoring the current component.
+
+            Parameters:
+                command (Command): Command for monitor manager/storage manager to manage monitoring/storage
+                response_timeout (int): Timeout to wait for response from the monitor manager
+            
+            Returns:
+                bool: True - executiong of the command ended successfully
+                      False - executing of the command ended with failure 
+        '''
+
+        if self.__send_control_cmd(command):
+            return self.__receive_control_response(command, response_timeout)
+        else:
+            return False
+
     # TO-DO: Make generic function with logging for control of database as well as monitoring
     # TO-DO: Make seperate functions for control of the database and monitoring
     def turn_off_monitoring(self):
@@ -272,7 +275,8 @@ class ComponentSMBase(FTSM):
                     format(self.name, self._id)
             )
 
-            success = self.__control_request(command=Command.SHUTDOWN)
+            success = self.__manage_control_request(command=Command.SHUTDOWN)
+            success = self.__manage_control_request(command=Command.STOP_STORE)
 
             if success:
                 self._to_be_monitored = False
@@ -307,8 +311,8 @@ class ComponentSMBase(FTSM):
                     format(self.name, self._id)
             )
 
-            success = self.__control_request(command=Command.START)
-            success = self.__control_request(command=Command.START_STORE)
+            success = self.__manage_control_request(command=Command.START)
+            success = self.__manage_control_request(command=Command.START_STORE)
 
             if success:
                 self._to_be_monitored = True
