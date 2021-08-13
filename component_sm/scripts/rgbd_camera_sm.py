@@ -194,13 +194,17 @@ class RGBDCameraSM(ComponentSMBase):
     def recovering(self):
         rospy.loginfo('[{}][{}] Now I am recovering the RGBD CAMERA by moving the head'.
         format(self.name, self._id))
+
         # Code responsible for recovering the camera e.g. moving the head
         rospy.sleep(3)
+        
         return FTSMTransitions.DONE_RECOVERING
 
     def configuring(self):
         rospy.loginfo('[{}][{}] Now I am reconfiguring the head RGBD camera by resetting the message bus'.
         format(self.name, self._id))
+
         # Code responsible for reconfiguring the camera e.g. resetting the message bus 
-        rospy.sleep(5)
+        rospy.sleep(3)
+
         return FTSMTransitions.DONE_CONFIGURING
