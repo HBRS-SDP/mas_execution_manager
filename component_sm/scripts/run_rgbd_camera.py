@@ -1,7 +1,10 @@
+#!/usr/bin/python3
+
 import rospy
 from rgbd_camera_sm import RGBDCameraSM
 import json
 import yaml
+
 
 if __name__ == '__main__':
     rospy.init_node('stream_pointcloud')

@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+
 import rospy
 from pyftsm.ftsm import FTSMTransitions
 from component_sm_base import ComponentSMBase
@@ -6,6 +7,7 @@ from sensor_msgs.msg import PointCloud2
 from jsonschema import validate, ValidationError
 import json
 import numpy as np
+
 
 class RGBDCameraSM(ComponentSMBase):
     """
@@ -17,6 +19,9 @@ class RGBDCameraSM(ComponentSMBase):
     ----------
     component_id : str,
         Unique id of the component
+
+    monitor_manager_id : str,
+        Unique id of the monitor manager
 
     nans_threshold : float
         Percentage threshold of NaN values (in the pointcloud) that is acceptable.
@@ -34,9 +39,6 @@ class RGBDCameraSM(ComponentSMBase):
     monitoring_pipeline_server : str
         Address and port of the server used to communicate with the component monitoring 
         e.g. default address of the Kafka server is 'localhost:9092'
-
-    monitoring_feedback_topics : list[str]
-        Name of the topics to receive feedback from the monitors
 
     monitors_ids : list[str]
         List of the unique ids of the monitors that are monitoring the current component
@@ -94,7 +96,14 @@ class RGBDCameraSM(ComponentSMBase):
 
         self._last_active_time = rospy.Time.now()
 
-    def __init_data_pipeline(self, input_topic, output_topic):
+    def __init_data_pipeline(self, input_topic: str, output_topic: str):
+        '''
+        Initialising publisher and listener for the transfer of the pointcloud.
+
+            Parameters:
+                input_topic (str) : Name of the topic for obtaining the point cloud 
+                output_topic (str) : Name of the topic for outputting the point cloud
+        '''
         # ROS poincloud listener
         self._pointcloud_listener = \
             rospy.Subscriber(
@@ -111,7 +120,7 @@ class RGBDCameraSM(ComponentSMBase):
                 queue_size=10
                 )
 
-    def __callback(self, data):
+    def __callback(self, data: PointCloud2):
         '''
         Callback responsible for receiving ROS messages with pointcloud data.
 
@@ -126,7 +135,13 @@ class RGBDCameraSM(ComponentSMBase):
         # Publishing poincloud to component monitoring
         self._pointcloud_publisher.publish(self._pointcloud)
 
-    def handle_monitoring_feedback(self):
+    def handle_monitoring_feedback(self) -> str:
+        '''
+        Function for handling messages from the monitors responsible for monitoring the current component.
+
+            Returns:
+                str: State of the Fault Tolerant State Machine 
+        '''
         time_now = rospy.Time.now()
              
         last_message = None
@@ -168,19 +183,34 @@ class RGBDCameraSM(ComponentSMBase):
             format(self.name, self._id))
 
     def operation_without_monitoring(self):
+        '''
+        Function specyfing the behaviour of the component when the monitoring can not be anbled. 
+        '''
         rospy.loginfo('[{}][{}] Component operates without monitoring.'.
             format(self.name, self._id))
         rospy.sleep(2)
 
     def operation_with_monitoring(self):
+        '''
+        Function specyfing the behaviour of the component when the monitoring can be anbled. 
+            
+            Returns:
+                str: State of the Fault Tolerant State Machine         
+        '''
         return self.handle_monitoring_feedback() 
 
     def running(self):
-        # Receiving events from component monitoring
+        '''
+        Method for the behaviour of a component during active operation.
+
+            Returns:
+                str: State of the Fault Tolerant State Machine 
+        '''
         monitor_feedback_handling_result = None
         
         time_now = rospy.Time.now()
 
+        # If the poincloud is available
         if self._pointcloud:
             if self._is_kafka_available:
 
@@ -192,6 +222,7 @@ class RGBDCameraSM(ComponentSMBase):
 
                 self._monitoring_database_connection_established = True
 
+            # If the pointcloud is being continuously refreshed
             while time_now - rospy.Duration(self._timeout) < \
             self._last_active_time and self._pointcloud.data :
                 time_now = rospy.Time.now()
@@ -201,6 +232,7 @@ class RGBDCameraSM(ComponentSMBase):
                 else:
                     self.operation_without_monitoring()
 
+        # If the poincloud is not available
         if monitor_feedback_handling_result is None:
             rospy.logerr('[{}][{}] Can not receive the poincloud from head RGBD Camera.'.
             format(self.name, self._id))
@@ -219,6 +251,12 @@ class RGBDCameraSM(ComponentSMBase):
             return monitor_feedback_handling_result
 
     def recovering(self):
+        '''
+        Method for component recovery.
+
+            Returns:
+                str: State of the Fault Tolerant State Machine 
+        '''
         rospy.loginfo('[{}][{}] Now I am recovering the RGBD CAMERA by moving the head'.
         format(self.name, self._id))
 
@@ -228,6 +266,12 @@ class RGBDCameraSM(ComponentSMBase):
         return FTSMTransitions.DONE_RECOVERING
 
     def configuring(self):
+        '''
+        Method for component configuration/reconfiguration.
+
+            Returns:
+                str: State of the Fault Tolerant State Machine 
+        '''
         rospy.loginfo('[{}][{}] Now I am reconfiguring the head RGBD camera by resetting the message bus'.
         format(self.name, self._id))
 
