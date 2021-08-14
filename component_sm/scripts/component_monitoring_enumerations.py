@@ -1,17 +1,16 @@
 from enum import Enum
 
 
-class Command(Enum):
-    START = 'activate'
-    SHUTDOWN = 'shutdown'
-    START_STORE = 'start_store'
-    STOP_STORE = 'stop_store'
+class Response(Enum):
+    OKAY = 200
+    STARTED = 201
+    STOPPED = 202
+    FAILED = 400
+    INCOMPLETE = 401
+    NOT_FOUND = 404
 
-class ResponseCode(Enum):
-    SUCCESS = 200
-    FAILURE = 400
 
 class MessageType(Enum):
-    RESPONSE = 'response'
-    REQUEST = 'request'
-    INFO = 'info'
+    START = 'START'
+    STOP = 'STOP'
+    UPDATE = 'UPDATE'

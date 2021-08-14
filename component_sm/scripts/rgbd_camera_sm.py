@@ -41,10 +41,10 @@ class RGBDCameraSM(ComponentSMBase):
     monitors_ids : list[str]
         List of the unique ids of the monitors that are monitoring the current component
 
-    general_message_format : dict
+    request_message_format : dict
         Format of the message used to switch on and off monitors
 
-    general_message_schema : dict
+    request_message_schema : dict
         Schema of the message used to switch on and off monitors
 
     monitoring_message_schema : dict
@@ -56,7 +56,7 @@ class RGBDCameraSM(ComponentSMBase):
     max_recovery_attempts : int
         Maximum number of attempts to recover
     """
-    def __init__(self, 
+    def __init__(self,
                  component_id,
                  monitor_manager_id,
                  nans_threshold,
@@ -65,21 +65,25 @@ class RGBDCameraSM(ComponentSMBase):
                  monitoring_control_topic,
                  monitoring_pipeline_server,
                  monitors_ids,
-                 general_message_format,
-                 general_message_schema,
+                 request_message_format,
+                 request_message_schema,
+                 respone_message_schema,
+                 broadcast_message_schema,
                  monitoring_message_schema,
                  data_transfer_timeout,
                  max_recovery_attempts=1):
-        super(RGBDCameraSM, self).__init__('RGBDCameraSM', 
+        super(RGBDCameraSM, self).__init__('RGBDCameraSM',
                                            component_id=component_id,
                                            monitor_manager_id=monitor_manager_id,
-                                           dependencies=[], 
+                                           dependencies=[],
                                            max_recovery_attempts=max_recovery_attempts,
                                            monitoring_control_topic=monitoring_control_topic,
                                            monitoring_pipeline_server=monitoring_pipeline_server,
                                            monitors_ids=monitors_ids,
-                                           general_message_format=general_message_format,
-                                           general_message_schema=general_message_schema,
+                                           request_message_format=request_message_format,
+                                           request_message_schema=request_message_schema,
+                                           response_message_schema=respone_message_schema,
+                                           broadcast_message_schema=broadcast_message_schema,
                                            monitoring_message_schemas=[monitoring_message_schema],
                                            monitoring_timeout=5)
         

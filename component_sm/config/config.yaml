@@ -8,6 +8,6 @@ threshold: 0.65 # Percentage threshold of NaN values (in the pointcloud) that is
 monitoring:
   pipeline_server: 'localhost:9092'
   control_topic: 'monitor_manager'
-  monitor_manager_id: 'manager'
+  monitor_manager_id: 'monitor_manager'
   monitors: 
     - id: 'pointcloud_monitor'

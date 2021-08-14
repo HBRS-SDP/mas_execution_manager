@@ -6,8 +6,10 @@ import yaml
 if __name__ == '__main__':
     rospy.init_node('stream_pointcloud')
 
-    general_message_format = json.load(open('../schemas/general.json'))
-    general_message_schema = json.load(open('../schemas/general.schema'))
+    request_message_format = json.load(open('../schemas/request.json'))
+    request_message_schema = json.load(open('../schemas/request.schema'))
+    broadcast_message_schema = json.load(open('../schemas/broadcast.schema'))
+    response_message_schema = json.load(open('../schemas/response.schema'))
     monitoring_message_schema = json.load(open('../schemas/monitoring.schema'))
     config = yaml.safe_load(open('../config/config.yaml'))
 
@@ -20,8 +22,10 @@ if __name__ == '__main__':
         monitoring_control_topic=config['monitoring']['control_topic'],
         monitoring_pipeline_server=config['monitoring']['pipeline_server'],
         monitors_ids=[config['monitoring']['monitors'][0]['id']],
-        general_message_format=general_message_format,
-        general_message_schema=general_message_schema,
+        request_message_format=request_message_format,
+        request_message_schema=request_message_schema,
+        respone_message_schema=response_message_schema,
+        broadcast_message_schema=broadcast_message_schema,
         monitoring_message_schema=monitoring_message_schema,
         data_transfer_timeout=config['data_transfer_timeout']
     )
