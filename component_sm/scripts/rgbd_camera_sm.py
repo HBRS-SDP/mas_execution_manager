@@ -87,6 +87,7 @@ class RGBDCameraSM(ComponentSMBase):
         self._timeout = data_transfer_timeout
         self._nans_threshold = nans_threshold
         self._no_feedback_counter = 0
+        self._monitoring_database_connection_established = False
 
         self.__init_data_pipeline(input_topic=data_input_topic,
                                   output_topic=data_output_topic)
@@ -151,15 +152,14 @@ class RGBDCameraSM(ComponentSMBase):
                         format(self.name, self._id))
                 
                 if last_message is None:
-                    self._no_feedback_counter += 1
-                    
                     # Count to three and try to turn on the monitoring one more time then
                     if self._no_feedback_counter >= 3:
-                        rospy.logwarn('[{}][{}] Trying to turn on the monitoring one more time.'.
+                        rospy.logwarn('[{}][{}] Trying to turn on the monitoring and storage one more time.'.
                         format(self.name, self._id))
-                        if self.turn_on_monitoring():
+                        if self.turn_on_monitoring() and self.turn_on_storage():
                             self._no_feedback_counter = 0
                     else:
+                        self._no_feedback_counter += 1
                         rospy.logwarn('[{}][{}] No feedback from the monitoring.'.
                         format(self.name, self._id))
 
@@ -178,14 +178,19 @@ class RGBDCameraSM(ComponentSMBase):
     def running(self):
         # Receiving events from component monitoring
         monitor_feedback_handling_result = None
+        
         time_now = rospy.Time.now()
 
         if self._pointcloud:
-            while not self.turn_on_monitoring():
-                rospy.sleep(2)
+            if self._is_kafka_available:
 
-            while not self.turn_on_storage():
-                rospy.sleep(2)
+                while not self.turn_on_monitoring():
+                    rospy.sleep(2)
+
+                while not self.turn_on_storage():
+                    rospy.sleep(2)
+
+                self._monitoring_database_connection_established = True
 
             while time_now - rospy.Duration(self._timeout) < \
             self._last_active_time and self._pointcloud.data :
@@ -199,9 +204,16 @@ class RGBDCameraSM(ComponentSMBase):
         if monitor_feedback_handling_result is None:
             rospy.logerr('[{}][{}] Can not receive the poincloud from head RGBD Camera.'.
             format(self.name, self._id))
+
+            self._pointcloud = None
             
-            self.turn_off_monitoring()
-            self.turn_off_storage()
+            if self._is_kafka_available and \
+                self._monitoring_database_connection_established:
+
+                self.turn_off_monitoring() 
+                self.turn_off_storage()
+                self._monitoring_database_connection_established = False
+            
             return FTSMTransitions.RECONFIGURE
         else:
             return monitor_feedback_handling_result

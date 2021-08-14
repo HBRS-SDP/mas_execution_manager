@@ -175,12 +175,15 @@ class ComponentSMBase(FTSM):
 
         if command in [Command.START_STORE, Command.STOP_STORE]:
             monitors = list()
+            
             if not self._monitoring_feedback_topics:
                 rospy.logwarn('[{}][{}] Attempted to run database component, but topics names with events were not received'.
                 format(self.name, self._id))
                 return False
+
             for monitor, topic in zip(self._monitors_ids, self._monitoring_feedback_topics):
                 monitors.append({"name": monitor, "topic": topic})
+            
             message['body']['monitors'] = monitors
         else:
             message['body']['monitors'] = self._monitors_ids
