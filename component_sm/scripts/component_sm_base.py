@@ -85,7 +85,6 @@ class ComponentSMBase(FTSM):
         self._monitoring_pipeline_server = monitoring_pipeline_server
         self._monitoring_feedback_topics = []
         self._monitoring_timeout = monitoring_timeout
-        self._is_kafka_available = False
 
         # Kafka monitor control producer placeholder
         self._monitor_control_producer = None
@@ -146,7 +145,6 @@ class ComponentSMBase(FTSM):
 
     def __init_monitor_feedback_listener(self, topics):
         self._monitoring_feedback_topics = topics
-        # TO-DO: Make robust when kafak not available, but try several times
         self._monitor_feedback_listener = self.__init_listener(topics)
 
     def __init_control_pipeline(self):
@@ -163,9 +161,9 @@ class ComponentSMBase(FTSM):
         except kafka.errors.NoBrokersAvailable as err:
             # Kafka monitor control producer placeholder
             self._monitor_control_producer = None
+
             # Kafka monitor control listener placeholder
             self._monitor_control_listener = None
-
             return False
 
     def __send_control_cmd(self, command: Command):
@@ -259,8 +257,45 @@ class ComponentSMBase(FTSM):
         else:
             return False
 
-    # TO-DO: Make generic function with logging for control of database as well as monitoring
-    # TO-DO: Make seperate functions for control of the database and monitoring
+    def __switch(self, device: str, mode: str):
+        monitoring = 'monitoring'
+        database = 'database'
+        on = 'on'
+        off = 'off'
+
+        if device not in [monitoring, database] or mode not in [on, off]:
+            raise ValueError('device must be "monitoring"/"database", mode must be "on"/"off"')
+
+        rospy.loginfo(
+            '[{}][{}] Turning {} the {}.'.format(self.name, self._id, mode, device)
+        )
+
+        if mode == on:
+            if device == monitoring:
+                success = self.__manage_control_request(command=Command.START)
+            else:
+                success = self.__manage_control_request(command=Command.START_STORE)
+        else:
+            if device == monitoring:
+                success = self.__manage_control_request(command=Command.SHUTDOWN)
+            else:
+                success = self.__manage_control_request(command=Command.STOP_STORE)
+
+        if success:
+            rospy.loginfo(
+                '[{}][{}] Successfully turned {} the {}'.
+                    format(self.name, self._id, mode, device)
+            )
+
+        else:
+            rospy.logerr(
+                '[{}][{}] Unsuccessfully turned {} the {}'.
+                    format(self.name, self._id, mode, device)
+            )
+
+        return success
+
+
     def turn_off_monitoring(self):
         '''
         Function responsible for turning off the monitors responsible for monitoring the current component.
@@ -268,34 +303,8 @@ class ComponentSMBase(FTSM):
             Returns:
                 bool: True - turning off the monitors ended successfully
                       False - turning off the monitors ended with failure 
-        '''
-        if self._to_be_monitored:
-            rospy.logwarn(
-                '[{}][{}] Turning off the monitoring.'.
-                    format(self.name, self._id)
-            )
-
-            success = self.__manage_control_request(command=Command.SHUTDOWN)
-            success = self.__manage_control_request(command=Command.STOP_STORE)
-
-            if success:
-                self._to_be_monitored = False
-
-                rospy.logwarn(
-                    '[{}][{}] Successfully turned off the monitoring'.
-                        format(self.name, self._id)
-                )
-
-            else:
-                rospy.logerr(
-                    '[{}][{}] Unsuccessfully turned off the monitoring'.
-                        format(self.name, self._id)
-                )
-
-            return success
-
-        self._to_be_monitored = False
-        return True
+        ''' 
+        return self.__switch(device='monitoring', mode='off')
 
     def turn_on_monitoring(self):
         '''
@@ -305,33 +314,13 @@ class ComponentSMBase(FTSM):
                 bool: True - turning on the monitors ended successfully
                       False - turning on the monitors ended with failure 
         '''
-        if not self._to_be_monitored:
-            rospy.loginfo(
-                '[{}][{}] Turning on the monitoring.'.
-                    format(self.name, self._id)
-            )
+        return self.__switch(device='monitoring', mode='on')
 
-            success = self.__manage_control_request(command=Command.START)
-            success = self.__manage_control_request(command=Command.START_STORE)
+    def turn_on_storage(self):
+        return self.__switch(device='database', mode='on')
 
-            if success:
-                self._to_be_monitored = True
-
-                rospy.loginfo(
-                    '[{}][{}] Successfully turned on the monitoring.'.
-                        format(self.name, self._id)
-                )
-
-            else:
-                rospy.logerr(
-                    '[{}][{}] Unsuccessfully turned on the monitoring.'.
-                        format(self.name, self._id)
-                )
-
-            return success
-
-        self._to_be_monitored = True
-        return True
+    def turn_off_storage(self):
+        return self.__switch(device='database', mode='off')
 
     def running(self):
         return FTSMTransitions.DONE

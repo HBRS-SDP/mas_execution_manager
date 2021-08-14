@@ -150,15 +150,18 @@ class RGBDCameraSM(ComponentSMBase):
                         rospy.loginfo('[{}][{}] Received poincloud contains acceptable number of NaN values.'.
                         format(self.name, self._id))
                 
-                if last_message is None and self._to_be_monitored:
+                if last_message is None:
                     self._no_feedback_counter += 1
-                    rospy.logwarn('[{}][{}] No feedback from the monitor.'.
-                    format(self.name, self._id))
                     
                     # Count to three and try to turn on the monitoring one more time then
                     if self._no_feedback_counter >= 3:
-                        self._to_be_monitored = False
-                        self._no_feedback_counter = 0
+                        rospy.logwarn('[{}][{}] Trying to turn on the monitoring one more time.'.
+                        format(self.name, self._id))
+                        if self.turn_on_monitoring():
+                            self._no_feedback_counter = 0
+                    else:
+                        rospy.logwarn('[{}][{}] No feedback from the monitoring.'.
+                        format(self.name, self._id))
 
         except ValidationError:
             rospy.logwarn('[{}][{}] Invalid format of the feedback message from the monitor.'.
@@ -170,7 +173,6 @@ class RGBDCameraSM(ComponentSMBase):
         rospy.sleep(2)
 
     def operation_with_monitoring(self):
-        self.turn_on_monitoring()
         return self.handle_monitoring_feedback() 
 
     def running(self):
@@ -178,19 +180,28 @@ class RGBDCameraSM(ComponentSMBase):
         monitor_feedback_handling_result = None
         time_now = rospy.Time.now()
 
-        while time_now - rospy.Duration(self._timeout) < \
-           self._last_active_time and self._pointcloud.data :
-            time_now = rospy.Time.now()
-            
-            if self._is_kafka_available:
-                monitor_feedback_handling_result = self.operation_with_monitoring()
-            else:
-                self.operation_without_monitoring()
+        if self._pointcloud:
+            while not self.turn_on_monitoring():
+                rospy.sleep(2)
+
+            while not self.turn_on_storage():
+                rospy.sleep(2)
+
+            while time_now - rospy.Duration(self._timeout) < \
+            self._last_active_time and self._pointcloud.data :
+                time_now = rospy.Time.now()
+                
+                if self._is_kafka_available:
+                    monitor_feedback_handling_result = self.operation_with_monitoring()
+                else:
+                    self.operation_without_monitoring()
 
         if monitor_feedback_handling_result is None:
             rospy.logerr('[{}][{}] Can not receive the poincloud from head RGBD Camera.'.
             format(self.name, self._id))
+            
             self.turn_off_monitoring()
+            self.turn_off_storage()
             return FTSMTransitions.RECONFIGURE
         else:
             return monitor_feedback_handling_result
