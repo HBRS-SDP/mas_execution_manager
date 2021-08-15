@@ -4,7 +4,7 @@ This project contains implementation of the abstract class `ComponentSMBase` whi
 
 The fault tolerance of the component is based on two aspects:
 * Use of the Fault Tolerant State Machine
-* Direct communication with the monitoring mechanism provided in the repository **component_monitoring**.
+* Direct communication with the Component Monitoring mechanism provided in the repository [component-monitoring](https://github.com/HBRS-SDP/component-monitoring).
 
 ## Usage
 To run the fault tolerant RGBD camera, which is a minimal working example of the Fault Tolerant Robot Component, please use the below command:
@@ -12,8 +12,13 @@ To run the fault tolerant RGBD camera, which is a minimal working example of the
 cd scripts
 python run_rgbd_camera.py
 ```
+Please, bear in mind that the implemented RGBD camera component needs to receive pointcloud data on the ROS topic `/hsrb/head_rgbd_sensor/depth_registered/points`.
 
-## Explanation of communication with **component_monitoring**
+## Usage of the Fault Tolerant State Machine
+
+The concept of the Fault Tolerant State Machine (FTSM) is explained [here](https://github.com/ropod-project/ftsm). In the current implementation the RGBD camera tries to recover whenever the respective Monitor (see *Communication with Component Monitoring*) detects that the gererated pointcloud is faulty. When the RGBD camera can not generate the pointcloud (no data on the topic `/hsrb/head_rgbd_sensor/depth_registered/points`) it tries to reconfigure itself.
+
+## Communication with Component Monitoring
 The implemented Fault Tolerant Component is transferring data (e.g.: pointcloud) to the Component Monitor with the use of ROS messages. Respective Component Monitors are monitoring the data and generating events with the use of Kafka message bus. Those events are then received by the implemented Fault Tolerant Robot Component and an appriopriate reaction is performed.
 
 Additionally, the Fault Tolerant Robot Component is able to turn off/on the respective monitors. It is done by sending an appriopriate request (via Kafka message bus) to the Monitor Manager which is able to start/stop chosen monitors. 
@@ -58,4 +63,6 @@ The Fault Tolerant Robot Component needs to have assigned certain parameters whi
 * `monitoring` - this section contains all the parameters that are necessary to communicate with the Monitor Manager and Storage Manager. The parameters are:
   * `pipeline_server` - address of the Kafka server
   * `control_topic` - Kafka topic to communicate with the Storage Manager and Monitor Manager
+  * `monitor_manager_id` - unique id of the Monitor Manager
+  * `storage_manager_id` - unique id of the Storage Manager
   * `monitors` - list of unique ids of the monitor modes that are monitoring the component

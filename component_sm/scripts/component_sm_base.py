@@ -303,11 +303,11 @@ class ComponentSMBase(FTSM):
                     return True
 
                 if rospy.Time.now() - start_time > rospy.Duration(response_timeout):
-                    rospy.logwarn('[{}][{}] Obtaining only responses from the monitor manager with incorrect data.'.
+                    rospy.logwarn('[{}][{}] Obtaining only responses with incorrect data.'.
                                   format(self.name, self._id))
                     return False
 
-            rospy.logwarn('[{}][{}] No response from the monitor manager.'.
+            rospy.logwarn('[{}][{}] No response.'.
                           format(self.name, self._id))
             return False
 
