@@ -85,7 +85,9 @@ class ComponentSMBase(FTSM):
         self._to_be_monitored = False
         self._id = component_id
         self._monitor_manager_id = monitor_manager_id
-        self._monitors_ids = monitors_ids
+        self._monitors_ids = dict()
+        for monitor_id in monitors_ids:
+            self._monitors_ids[monitor_id] = None
         self._monitoring_message_schemas = monitoring_message_schemas
         self._request_message_schema = request_message_schema
         self._request_message_format = request_message_format
@@ -202,6 +204,7 @@ class ComponentSMBase(FTSM):
                 print(reply)
                 for monitor in reply:
                     self._monitoring_feedback_topics.append(monitor['topic'])
+                    self._monitors_ids[monitor['mode']] = monitor['id']
                 return True
         return False
 
@@ -228,14 +231,19 @@ class ComponentSMBase(FTSM):
             return self.__receive_control_response(dialogue_id, Response.STOPPED, response_timeout=10)
         return False
 
-    def __toggle_storage(self, monitor_ids: List[str], on: bool) -> bool:
+    def __toggle_storage(self, monitor_ids: Dict[str, str], on: bool) -> bool:
+        ids = list(monitor_ids.copy().keys())
         if len(self._monitoring_feedback_topics) == len(monitor_ids):
             retries = 3
             while retries > 0:
-                for monitor in monitor_ids:
-                    if self.__send_update(monitor, {"Store": on}):
-                        monitor_ids.remove(monitor)
-                if len(monitor_ids) <= 0:
+                for monitor in ids:
+                    monitor_id = self._monitors_ids[monitor]
+                    if monitor_id is not None:
+                        if self.__send_update(monitor_id, {"Store": on}):
+                            ids.remove(monitor)
+                    else:
+                        rospy.logwarn("Monitor {} not initialized".format(monitor))
+                if len(ids) <= 0:
                     return True
             return False
         rospy.logwarn('[{}][{}] Storage could not be started for {}'.format(self.name, self._id, monitor_ids))
@@ -273,7 +281,6 @@ class ComponentSMBase(FTSM):
                         schema=self._response_message_schema
                     )
                     if message.value['To'] == self._id and message.value['Id'] == dialogue_id:
-                        rospy.loginfo("###############")
                         response_code = Response(message.value['Response']['Code'])
                         if response_code in expected_response_codes:
                             success = True
