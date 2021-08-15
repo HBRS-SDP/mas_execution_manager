@@ -238,7 +238,8 @@ class RGBDCameraSM(ComponentSMBase):
                     self.operation_without_monitoring()
 
         # If the poincloud is not available
-        if time_now - rospy.Duration(self._timeout) >= self._last_active_time:
+        if time_now - rospy.Duration(self._timeout) >= self._last_active_time or \
+            not self._pointcloud:
             rospy.logerr('[{}][{}] Can not receive the poincloud from head RGBD Camera.'.
             format(self.name, self._id))
 
@@ -269,7 +270,7 @@ class RGBDCameraSM(ComponentSMBase):
         rospy.sleep(3)
         # Restart kafka consumer to get only the newest feedback
         self._monitor_feedback_listener.close()
-        self.init_monitor_feedback_listener(None)
+        self.init_monitor_feedback_listener()
 
         return FTSMTransitions.DONE_RECOVERING
 
