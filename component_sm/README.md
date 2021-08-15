@@ -64,9 +64,9 @@ The Fault Tolerant Robot Component needs to have assigned certain parameters whi
 * `data_output_topics` - ROS topic to which the data is put from the component
 * `data_transfer_timeout` - if component can not publish data for this time, reconfiguration is activated (the unit is second)
 * `threshold` - percentage threshold of NaN values (in the pointcloud) that is acceptable. If number of NaN values exceeds this limit, the component starts recovery behaviour. In the current implementation the information about the NaNs in the generated pointcloud is received from the monitor.
-* `monitoring` - this section contains all the parameters that are necessary to communicate with the Monitor Manager and Storage Manager. The parameters are:
+* `monitoring` - this section contains all the parameters that are necessary to communicate with the Monitor Manager and Storage Manager (Data Storage). The parameters are:
   * `pipeline_server` - address of the Kafka server
-  * `control_topic` - Kafka topic to communicate with the Storage Manager and Monitor Manager
+  * `control_topic` - Kafka topic to communicate with the Storage Manager (Data Storage) and Monitor Manager
   * `monitor_manager_id` - unique id of the Monitor Manager
-  * `storage_manager_id` - unique id of the Storage Manager
+  * `storage_manager_id` - unique id of the Storage Manager (in the Data Storage part)
   * `monitors` - list of unique ids of the monitor modes that are monitoring the component
