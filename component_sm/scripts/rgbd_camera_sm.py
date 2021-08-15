@@ -91,6 +91,7 @@ class RGBDCameraSM(ComponentSMBase):
         self._timeout = data_transfer_timeout
         self._nans_threshold = nans_threshold
         self._no_feedback_counter = 0
+        self._ftsm_transition = None
         self._monitoring_database_connection_established = False
 
         self.__init_data_pipeline(input_topic=data_input_topic,
@@ -208,13 +209,13 @@ class RGBDCameraSM(ComponentSMBase):
             Returns:
                 str: State of the Fault Tolerant State Machine 
         '''
-        monitor_feedback_handling_result = None
         
         time_now = rospy.Time.now()
 
         # If the poincloud is available
         if self._pointcloud:
-            if self._is_kafka_available:
+            if self._is_kafka_available and \
+                self._ftsm_transition is not FTSMTransitions.RECOVER:
 
                 while not self.turn_on_monitoring():
                     rospy.sleep(2)
@@ -226,16 +227,18 @@ class RGBDCameraSM(ComponentSMBase):
 
             # If the pointcloud is being continuously refreshed
             while time_now - rospy.Duration(self._timeout) < \
-            self._last_active_time and self._pointcloud.data :
+            self._last_active_time and self._pointcloud.data:
                 time_now = rospy.Time.now()
                 
                 if self._is_kafka_available:
-                    monitor_feedback_handling_result = self.operation_with_monitoring()
+                    self._ftsm_transition = self.operation_with_monitoring()
+                    if self._ftsm_transition == FTSMTransitions.RECOVER:
+                        return FTSMTransitions.RECOVER
                 else:
                     self.operation_without_monitoring()
 
         # If the poincloud is not available
-        if monitor_feedback_handling_result is None:
+        if time_now - rospy.Duration(self._timeout) >= self._last_active_time:
             rospy.logerr('[{}][{}] Can not receive the poincloud from head RGBD Camera.'.
             format(self.name, self._id))
 
@@ -247,10 +250,10 @@ class RGBDCameraSM(ComponentSMBase):
                 self.turn_off_monitoring() 
                 self.turn_off_storage()
                 self._monitoring_database_connection_established = False
-            
+                self._ftsm_transition = FTSMTransitions.RECONFIGURE
             return FTSMTransitions.RECONFIGURE
         else:
-            return monitor_feedback_handling_result
+            return self._ftsm_transition 
 
     def recovering(self):
         '''
@@ -264,6 +267,9 @@ class RGBDCameraSM(ComponentSMBase):
 
         # Code responsible for recovering the camera e.g. moving the head
         rospy.sleep(3)
+        # Restart kafka consumer to get only the newest feedback
+        self._monitor_feedback_listener.close()
+        self.init_monitor_feedback_listener(None)
 
         return FTSMTransitions.DONE_RECOVERING
 
