@@ -7,7 +7,7 @@
   "default": {},
   "examples": [
     {
-      "Id": 1,
+      "Id": "asdf-1231",
       "From": "rgbd_camera",
       "To": "monitor_manager",
       "START": [
@@ -33,7 +33,7 @@
       "properties": {
         "Id": {
           "$id": "#/properties/Id",
-          "type": "integer",
+          "type": "string",
           "title": "The Id schema",
           "description": "An explanation about the purpose of this instance.",
           "default": 0,
@@ -96,8 +96,7 @@
                   }
                 ],
                 "required": [
-                  "Id",
-                  "Params"
+                  "Id"
                 ],
                 "properties": {
                   "Id": {
@@ -156,7 +155,7 @@
       "properties": {
         "Id": {
           "$id": "#/properties/Id",
-          "type": "integer",
+          "type": "string",
           "title": "The Id schema",
           "description": "An explanation about the purpose of this instance.",
           "default": 0,
@@ -244,7 +243,7 @@
       "properties": {
         "Id": {
           "$id": "#/properties/Id",
-          "type": "integer",
+          "type": "string",
           "title": "The Id schema",
           "description": "An explanation about the purpose of this instance.",
           "default": 0,

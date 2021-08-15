@@ -177,17 +177,14 @@ class ComponentSMBase(FTSM):
             return False
 
     def __create_message_header(self) -> Tuple[Dict, str]:
-        message = self._request_message_format
+        message = self._request_message_format.copy()
         dialogue_id = str(uuid.uuid4())
         message['Id'] = dialogue_id
         message['From'] = self._id
         return message, dialogue_id
 
     def __send_start(self, params: Dict = None) -> bool:
-        message = self._request_message_format
-        dialogue_id = str(uuid.uuid4())
-        message['Id'] = dialogue_id
-        message['From'] = self._id
+        message, dialogue_id = self.__create_message_header()
         message['To'] = self._monitor_manager_id
         message[MessageType.START.value] = list()
         for monitor in self._monitors_ids:
@@ -200,15 +197,23 @@ class ComponentSMBase(FTSM):
                     pass
             message[MessageType.START.value].append(element)
         if self.__send_control_cmd(message):
-            return self.__receive_control_response(dialogue_id, Response.OKAY, response_timeout=3)
+            success, reply = self.__receive_control_response(dialogue_id, [Response.STARTED, Response.OKAY])
+            if success and isinstance(reply, list):
+                print(reply)
+                for monitor in reply:
+                    self._monitoring_feedback_topics.append(monitor['topic'])
+                return True
         return False
 
     def __send_update(self, receiver: str, params: Dict[str, Any]) -> bool:
         message, dialogue_id = self.__create_message_header()
         message['To'] = receiver
-        message['Params'] = params
+        update = dict()
+        update['Params'] = params
+        message[MessageType.UPDATE.value] = update
         if self.__send_control_cmd(message):
-            return self.__receive_control_response(dialogue_id, Response.OKAY, response_timeout=10)
+            success, reply = self.__receive_control_response(dialogue_id, [Response.OKAY], response_timeout=10)
+            return success
         return False
 
     def __send_stop(self) -> bool:
@@ -220,7 +225,7 @@ class ComponentSMBase(FTSM):
             element['Id'] = monitor
             message[MessageType.STOP.value].append(element)
         if self.__send_control_cmd(message):
-            return self.__receive_control_response(dialogue_id, Response.OKAY, response_timeout=10)
+            return self.__receive_control_response(dialogue_id, Response.STOPPED, response_timeout=10)
         return False
 
     def __toggle_storage(self, monitor_ids: List[str], on: bool) -> bool:
@@ -253,12 +258,13 @@ class ComponentSMBase(FTSM):
         except Exception:
             return None
 
-    def __receive_control_response(self, dialogue_id: str, expected_response_code: Response,
-                                   response_timeout=5) -> bool:
+    def __receive_control_response(self, dialogue_id: str, expected_response_codes: List[Response],
+                                   response_timeout=10) -> Tuple[bool, Any]:
         start_time = rospy.Time.now()
         try:
             for message in self._monitor_control_listener:
                 try:
+                    rospy.loginfo(message.value)
                     if message.value['To'] != self._id:
                         continue
                     # Validate the correctness of the response message
@@ -267,17 +273,20 @@ class ComponentSMBase(FTSM):
                         schema=self._response_message_schema
                     )
                     if message.value['To'] == self._id and message.value['Id'] == dialogue_id:
-                        response_code = Response(message.value['Code'])
-                        if response_code == expected_response_code:
-                            return True
+                        rospy.loginfo("###############")
+                        response_code = Response(message.value['Response']['Code'])
+                        if response_code in expected_response_codes:
+                            success = True
                         else:
-                            try:
-                                description = message.value['Description']
-                            except KeyError:
-                                description = None
+                            success = False
+                        try:
+                            reply = message.value['Response']['Message']
+                        except KeyError:
+                            reply = None
+                        if not success:
                             rospy.logwarn(
-                                '[{}][{}] Received {}: {}'.format(self.name, self._id, response_code, description))
-                            return False
+                                '[{}][{}] Received {}: {}'.format(self.name, self._id, response_code, reply))
+                        return success, reply
                 except ValidationError:
                     rospy.logwarn(
                         '[{}][{}] Invalid format of the acknowledgement from the monitor manager regarding monitors: {}.'.
@@ -291,42 +300,12 @@ class ComponentSMBase(FTSM):
 
             rospy.logwarn('[{}][{}] No response from the monitor manager.'.
                           format(self.name, self._id))
-            return False
+            return False, None
         except TimeoutError:
             rospy.logwarn(
                 '[{}][{}] Timeout occurred while waiting for response on Request with ID {}'.format(self.name, self._id,
                                                                                                     dialogue_id))
-            return False
-
-    def __receive_monitor_helo(self, response_timeout=5) -> bool:
-        start_time = rospy.Time.now()
-        try:
-            helos = dict()
-
-            for message in self._monitor_control_listener:
-                try:
-                    # Validate the correctness of the HELO message
-                    validate(
-                        instance=message.value,
-                        schema=self._broadcast_message_schema
-                    )
-                    helos[message.value['Mode']] = message.value['Topic']
-                    if all(elem in helos.keys() for elem in self._monitors_ids):
-                        return True
-                except ValidationError:
-                    rospy.logdebug(
-                        '[{}][{}] Expecting valid HELO message.'.
-                            format(self.name, self._id))
-                if rospy.Time.now() - start_time > rospy.Duration(response_timeout):
-                    raise TimeoutError
-
-            rospy.logwarn('[{}][{}] No messages received on control channel.'.
-                          format(self.name, self._id))
-            return False
-        except TimeoutError:
-            rospy.logwarn(
-                '[{}][{}] Timeout occurred while waiting for monitor HELOs!'.format(self.name, self._id))
-            return False
+            return False, None
 
     def __switch(self, device: str, mode: str):
         monitoring = 'monitoring'

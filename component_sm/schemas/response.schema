@@ -25,7 +25,7 @@
     "properties": {
         "Id": {
             "$id": "#/properties/Id",
-            "type": "integer",
+            "type": "string",
             "title": "The Id schema",
             "description": "An explanation about the purpose of this instance.",
             "default": 0,
@@ -80,9 +80,9 @@
                     ],
                     "enum": [200, 201, 202, 400, 401, 404]
                 },
-                "Description": {
+                "Message": {
                     "$id": "#/properties/Response/properties/Message",
-                    "type": "string",
+                    "type": ["object", "string", "array", "null"],
                     "title": "The Message schema",
                     "description": "An explanation about the purpose of this instance.",
                     "default": "",
