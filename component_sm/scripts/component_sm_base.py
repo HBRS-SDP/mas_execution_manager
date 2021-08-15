@@ -222,13 +222,19 @@ class ComponentSMBase(FTSM):
     def __send_stop(self) -> bool:
         message, dialogue_id = self.__create_message_header()
         message['To'] = self._monitor_manager_id
-        message[MessageType.STOP.value] = list()
+        message[MessageType.START.value] = list()
         for monitor in self._monitors_ids:
             element = dict()
             element['Id'] = monitor
-            message[MessageType.STOP.value].append(element)
+            message[MessageType.START.value].append(element)
         if self.__send_control_cmd(message):
-            return self.__receive_control_response(dialogue_id, Response.STOPPED, response_timeout=10)
+            success, reply = self.__receive_control_response(dialogue_id, [Response.STOPPED])
+            if success and isinstance(reply, list):
+                print(reply)
+                for monitor in reply:
+                    self._monitoring_feedback_topics.remove(monitor['topic'])
+                    self._monitors_ids[monitor['mode']] = monitor['id']
+                return True
         return False
 
     def __toggle_storage(self, monitor_ids: Dict[str, str], on: bool) -> bool:
