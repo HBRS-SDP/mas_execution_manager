@@ -9,5 +9,4 @@ monitoring:
   pipeline_server: 'localhost:9092'
   control_topic: 'monitor_manager'
   monitor_manager_id: 'manager'
-  monitors: 
-    - id: 'pointcloud_monitor'
+  monitors: ['pointcloud_monitor'] #list of the ids of the monitoring modes to run

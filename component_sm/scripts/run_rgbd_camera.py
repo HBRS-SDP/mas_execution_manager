@@ -22,7 +22,7 @@ if __name__ == '__main__':
         data_output_topic=config['data_output_topics'][0],
         monitoring_control_topic=config['monitoring']['control_topic'],
         monitoring_pipeline_server=config['monitoring']['pipeline_server'],
-        monitors_ids=[config['monitoring']['monitors'][0]['id']],
+        monitors_ids=config['monitoring']['monitors'],
         general_message_format=general_message_format,
         general_message_schema=general_message_schema,
         monitoring_message_schema=monitoring_message_schema,

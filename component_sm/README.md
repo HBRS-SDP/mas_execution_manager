@@ -1,49 +1,61 @@
 # Component State Machine
 
-This project contains implementation of the abstract class `ComponentSMBase` which is used for creating fault tolerant robot components. A minimal working example of such component is provided within class `RGBDCameraSM`.
+This project contains implementation of the abstract class `ComponentSMBase` which is used for creating Fault Tolerant Robot Components. A minimal working example of such component is provided within class `RGBDCameraSM`. It simulates the behaviour of the fault tolerant RGBD camera in the robot. It only simulates because there is no real hardware interface implemented. Instead of this simply the ROS topic with the pointcloud is used.
+
 The fault tolerance of the component is based on two aspects:
 * Use of the Fault Tolerant State Machine
 * Direct communication with the monitoring mechanism provided in the repository **component_monitoring**.
 
 ## Usage
-To run the fault tolerant RGBD camera, which is a minimal working example of the fault tolerant component, please use the below command:
+To run the fault tolerant RGBD camera, which is a minimal working example of the Fault Tolerant Robot Component, please use the below command:
 ```python
 cd scripts
 python run_rgbd_camera.py
 ```
 
 ## Explanation of communication with **component_monitoring**
-Fault Tolerant Component is transferring data (e.g.: pointcloud) to the Component Monitoring with the use of ROS message bus. Respective monitors in the Component Monitoring part are monitoring the data and generating events into Kafka message bus. Those events are then received by the Fault Tolerant Component and an appriopriate reaction is performed.
+The implemented Fault Tolerant Component is transferring data (e.g.: pointcloud) to the Component Monitor with the use of ROS messages. Respective Component Monitors are monitoring the data and generating events with the use of Kafka message bus. Those events are then received by the implemented Fault Tolerant Robot Component and an appriopriate reaction is performed.
 
-Additionally, the Fault Tolerant Component is able to turn off/on the respective monitors. It is done by sending an appriopriate command to the Component Monitoring (more precisely `monitor_manager`).
+Additionally, the Fault Tolerant Robot Component is able to turn off/on the respective monitors. It is done by sending an appriopriate request (via Kafka message bus) to the Monitor Manager which is able to start/stop chosen monitors. 
+
+The Fault Tolerant Robot Component is also able to communicate with the Data Storage and request to store in the database events from the chosen Component Monitors.
 
 The complete communication schema is depicted below with the Internal Block Diagram.
 
-![Pick bottle from table state machine](../docs/figures/commponent_sm_comm.png)
+![System architecture](../docs/figures/commponent_sm_comm.png)
 
 The messages sent within the Kafka message bus are in the form of JSON. There are two types of messages:
 
-* general message - it that case it is used to send commands (`general.json`), the message is composed of the following fields:
-  * `source_id` - unique id of the publisher (e.g. id of the component)
-  * `target_id` - list of the ids of the receivers (e.g. ids of the monitors)
-  * `type` - type of the message (e.g.: ack (acknowledgement), cmd (command))
-  * `message`
-    * `command` - command for the receiver (e.g. shutdown or activate), this field is used when the type of the message is `cmd`
-    * `status` - status of the publisher performing the command (e.g.: success,failure, fatal), thie field is used when the type of the message is `ack`,
-* event message - in that case specific format is used for the minimal working example (`monitoring.json`):
+* general message - the json file and schema are in `general.json` and `general.schema` files. The communication between the Fault Tolerant Robot Component and Monitor Manager/Data Storage is based on that form of the message. The message is composed of the following fields:
+  * `from` - unique id of the publisher (e.g. id of the Fault Tolerant Robot Component)
+  * `to` - unique id of the receiver (e.g. id of the Monitor Manager)
+  * `message` - type of the message (`request`, `response` or `info`)
+  * `body` - the content of this part varies, depending on the type of the message.
+    * If the message is of type `request` the `body` section contains respective fields:
+      * `command` - possible commands are: `activate` / `shutdown` (switch on/off chosen monitors), `start_storage`/`stop_storage` (start/stop data storage for the events produced by the chosen monitors)
+      * `monitors` - monitors which we want to be shut down by the Monitor Manager or monitors which are producing events that no longer should be stored by the Data Storage 
+    * If the message is of type `response` the `body` section contains respective fields:
+      * `code` - possible codes are: `200` / `400` (success/failure)
+      * `message` - additional information, mainly for debugging purposes
+    * If the message is of type `info` the `body` section contains respective fields:
+      * `monitors` - list of the monitors ids
+      * `actions`
+ 
+* event message - the event containing the percentage of the NaN values in the pointcloud generated by the RGBD camera.The format of the message is defined in the `monitoring.json` and `monitoring.schema` and is as follows:
   * `monitorName` - name of the monitor that generated the event
   * `monitorDescription` - description of the monitor
-  * `healthStatus`
-    * `nans` - field indicating if the monitor considers the number of NaN values in the received point cloud (from the component) as too big (`true`) or as normal (`false`)
+  * `healthStatus` - health status of the component. It contains one filed `nan_ratio`, which is the percentage of the NaN values in the pointcloud generated by the component (here RGBD camera).
 
 ## Configuration
 
-The Fault Tolerant Component needs to have assigned certain parameters which are depicted in the configuration file `config.yaml`. All of the parameters are explained below:
+The Fault Tolerant Robot Component needs to have assigned certain parameters which are depicted in the configuration file `config/config.yaml`. All of the parameters are explained below:
 
-* `id` - unique id of the fault tolerant component
+* `id` - unique id of the Fault Tolerant Robot Component
 * `data_input_topics` - ROS topic from which the data is received by the component
 * `data_output_topics` - ROS topic to which the data is put from the component
 * `data_transfer_timeout` - if component can not publish data for this time, reconfiguration is activated (the unit is second)
-* `pipeline_server` - address of the Kafka server
-* `control_topic` - Kafka topic to switch on/off monitoring
-* `monitors` - list of monitors that are monitoring the component, each monitor is defined by its unique `id` and `feedback_topic` from which the component is receiving information about its possible failure
+* `threshold` - percentage threshold of NaN values (in the pointcloud) that is acceptable. If number of NaN values exceeds this limit, the component starts recovery behaviour. In the current implementation the information about the NaNs in the generated pointcloud is received from the monitor.
+* `monitoring` - this section contains all the parameters that are necessary to communicate with the Monitor Manager and Storage Manager. The parameters are:
+  * `pipeline_server` - address of the Kafka server
+  * `control_topic` - Kafka topic to communicate with the Storage Manager and Monitor Manager
+  * `monitors` - list of unique ids of the monitor modes that are monitoring the component
