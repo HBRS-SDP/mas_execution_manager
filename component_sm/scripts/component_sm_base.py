@@ -63,6 +63,7 @@ class ComponentSMBase(FTSM):
                  name,
                  component_id,
                  monitor_manager_id,
+                 storage_manager_id,
                  dependencies,
                  monitoring_control_topic,
                  monitoring_pipeline_server,
@@ -80,6 +81,7 @@ class ComponentSMBase(FTSM):
         self._to_be_monitored = False
         self._id = component_id
         self._monitor_manager_id = monitor_manager_id
+        self._storage_manager_id = storage_manager_id
         self._monitors_ids = monitors_ids
         self._monitoring_message_schemas = monitoring_message_schemas
         self._general_message_schema = general_message_schema
@@ -91,7 +93,7 @@ class ComponentSMBase(FTSM):
 
         # Kafka monitor control producer placeholder
         self._monitor_control_producer = None
-        
+
         # Kafka monitor control listener placeholder
         self._monitor_control_listener = None
 
@@ -125,11 +127,11 @@ class ComponentSMBase(FTSM):
                 rospy.logwarn('[{}][{}] No kafka server detected. Retrying ...'.
                 format(self.name, self._id))
                 rospy.sleep(5)
-      
+
         if self._is_kafka_available:
             rospy.logwarn('[{}][{}] Kafka server detected. Component will try to start with monitoring.'.
                 format(self.name, self._id))
-        else: 
+        else:
             rospy.logwarn('[{}][{}] No kafka server detected. Component will start without monitoring.'.
                 format(self.name, self._id))
 
@@ -152,7 +154,7 @@ class ComponentSMBase(FTSM):
                 consumer_timeout_ms=self._monitoring_timeout * 1000
             )
         return listener
-    
+
     def __init_producer(self) -> KafkaProducer:
         '''
         Function responsible for initializing the kafka producer.
@@ -194,7 +196,7 @@ class ComponentSMBase(FTSM):
             # Kafka monitor control listener
             self._monitor_control_listener = \
                 self.__init_listener([self._monitoring_control_topic])
-            
+
             return True
 
         except kafka.errors.NoBrokersAvailable as err:
@@ -219,13 +221,13 @@ class ComponentSMBase(FTSM):
         '''
         message = self._general_message_format
         message['from'] = self._id
-        message['to'] = self._monitor_manager_id
         message['message'] = MessageType.REQUEST.value
         message['body']['command'] = command.value
 
         if command in [Command.START_STORE, Command.STOP_STORE]:
+            message['to'] = self._storage_manager_id
             monitors = list()
-            
+
             if not self._monitoring_feedback_topics:
                 rospy.logwarn('[{}][{}] Attempted to run database component, but topics names with events were not received'.
                 format(self.name, self._id))
@@ -233,9 +235,10 @@ class ComponentSMBase(FTSM):
 
             for monitor, topic in zip(self._monitors_ids, self._monitoring_feedback_topics):
                 monitors.append({"name": monitor, "topic": topic})
-            
+
             message['body']['monitors'] = monitors
         else:
+            message['to'] = self._monitor_manager_id
             message['body']['monitors'] = self._monitors_ids
 
         future = \
@@ -245,7 +248,7 @@ class ComponentSMBase(FTSM):
                            default=json_util.default).encode('utf-8')
             )
         return future.get(timeout=60)
-    
+
     def __receive_control_response(self, command: Command, response_timeout: int) -> bool:
         '''
         Function responsible for receiving the response from the 
@@ -290,6 +293,14 @@ class ComponentSMBase(FTSM):
                         return True
                     else:
                         return False
+                elif self._id == message.value['to'] and \
+                        self._storage_manager_id == message.value['from'] and \
+                        message_type == MessageType.RESPONSE:
+                    response_code = ResponseCode(message.value['body']['code'])
+                    if response_code == ResponseCode.SUCCESS and command == Command.START_STORE:
+                        rospy.loginfo('[{}][{}] Started storage for monitors: {}.'.
+                                      format(self.name, self._id, self._monitors_ids))
+                    return True
 
                 if rospy.Time.now() - start_time > rospy.Duration(response_timeout):
                     rospy.logwarn('[{}][{}] Obtaining only responses from the monitor manager with incorrect data.'.
@@ -381,7 +392,7 @@ class ComponentSMBase(FTSM):
             Returns:
                 bool: True - turning off the monitors ended successfully
                       False - turning off the monitors ended with failure 
-        ''' 
+        '''
         return self.__switch(device='monitoring', mode='off')
 
     def turn_on_monitoring(self):
@@ -401,7 +412,7 @@ class ComponentSMBase(FTSM):
             Returns:
                 bool: True - turning on the data storage ended successfully
                       False - turning on the data storage ended with failure 
-        ''' 
+        '''
         return self.__switch(device='database', mode='on')
 
     def turn_off_storage(self):
@@ -411,7 +422,7 @@ class ComponentSMBase(FTSM):
             Returns:
                 bool: True - turning off the data storage ended successfully
                       False - turning off the data storage ended with failure 
-        ''' 
+        '''
         return self.__switch(device='database', mode='off')
 
     def running(self):
