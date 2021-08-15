@@ -4,19 +4,8 @@ This project contains implementation of the abstract class `ComponentSMBase` whi
 
 The fault tolerance of the component is based on two aspects:
 
-* Use of the Fault Tolerant State Machine
-* Direct communication with the Component Monitoring mechanism provided in the repository [component-monitoring](https://github.com/HBRS-SDP/component-monitoring).
-
-## Usage
-
-To run the fault tolerant RGBD camera, which is a minimal working example of the Fault Tolerant Robot Component, please use the below command:
-
-```python
-cd scripts
-python run_rgbd_camera.py
-```
-
-Please, bear in mind that the implemented RGBD camera component needs to receive pointcloud data on the ROS topic `/hsrb/head_rgbd_sensor/depth_registered/points`.
+* Usage of the [Fault Tolerant State Machine](https://github.com/HBRS-SDP/component-monitoring).
+* Direct communication with the [Component Monitoring](https://github.com/HBRS-SDP/component-monitoring).
 
 ## Usage of the Fault Tolerant State Machine
 
@@ -24,7 +13,7 @@ The concept of the Fault Tolerant State Machine (FTSM) is explained [here](https
 
 ## Communication with Component Monitoring
 
-The implemented Fault Tolerant Component is transferring data (e.g.: pointcloud) to the Component Monitor with the use of ROS messages. Respective Component Monitors are monitoring the data and generating events with the use of Kafka message bus. Those events are then received by the implemented Fault Tolerant Robot Component and an appriopriate reaction is performed.
+The concept of the Component Monitoring is explained [here](https://github.com/HBRS-SDP/component-monitoring). The implemented Fault Tolerant Robot Component is transferring data (e.g.: pointcloud) to the Component Monitor with the use of ROS messages. Respective Component Monitors are monitoring the data and generating events with the use of Kafka message bus. Those events are then received by the implemented Fault Tolerant Robot Component and an appriopriate reaction is performed.
 
 Additionally, the Fault Tolerant Robot Component is able to turn off/on the respective monitors. It is done by sending an appriopriate request (via Kafka message bus) to the Monitor Manager which is able to start/stop chosen monitors. 
 
@@ -70,3 +59,14 @@ The Fault Tolerant Robot Component needs to have assigned certain parameters whi
   * `monitor_manager_id` - unique id of the Monitor Manager
   * `storage_manager_id` - unique id of the Storage Manager (in the Data Storage part)
   * `monitors` - list of unique ids of the monitor modes that are monitoring the component
+
+## Usage
+
+To run the fault tolerant RGBD camera, which is a minimal working example of the Fault Tolerant Robot Component, please use the below command:
+
+```python
+cd scripts
+python run_rgbd_camera.py
+```
+
+Please, bear in mind that the implemented RGBD camera component needs to receive pointcloud data on the ROS topic `/hsrb/head_rgbd_sensor/depth_registered/points`.
