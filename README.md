@@ -14,7 +14,7 @@
     - [Examples](#examples)
     - [Launch file parameters](#launch-file-parameters)
     - [MAS domestic-specific scenario state base](#mas-domestic-specific-scenario-state-base)
-    - [Component State Machine](#component-state-machine)
+  - [Component State Machine](#component-state-machine)
 
 ## Summary
 
@@ -387,5 +387,5 @@ class StateName(ScenarioStateBase):
 
 If the states in a scenario state machine inherit from `ScenarioStateBase`, it is necessary to launch the ROSPlan components and mongodb_store together with the state machine creator. The [`mdr_rosplan_interface`](https://github.com/b-it-bots/mas_domestic_robotics/tree/devel/mdr_planning/mdr_rosplan_interface) package includes a launcher for these components. If states inherit from `ScenarioStateBase`, but do not use any of the functionalities of ROSPlan or mongodb_store, simply including this launcher is sufficient (as shown [here](https://github.com/b-it-bots/mas_domestic_robotics/blob/devel/mdr_planning/mdr_scenarios/mdr_demos/mdr_demo_describe_people/ros/launch/describe_people.launch)); if these functionalities are used, some of the arguments in the launch file need to be set (as illustrated [here](https://github.com/b-it-bots/mas_domestic_robotics/blob/devel/mdr_planning/mdr_scenarios/mdr_demos/mdr_demo_simple_pick_and_place/ros/launch/pick_and_place.launch)).
 
-### Component State Machine
+## Component State Machine
 The Component State Machine is the additional project that contains concept for implementation of the Fault Tolerant Robot Components. The code as well as more detailed explanation are contained in the directory [component_sm](component_sm).
